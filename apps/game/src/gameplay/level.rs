@@ -4,7 +4,7 @@ use crate::{
     asset_tracking::LoadResource, audio::MusicPool, gameplay::npc::NPC_RADIUS, screens::Screen,
 };
 use bevy::prelude::*;
-use bevy_landmass::{PointSampleDistance3d, prelude::*};
+use bevy_landmass::{prelude::*};
 use bevy_rerecast::prelude::*;
 use bevy_seedling::prelude::*;
 use bevy_seedling::sample::Sample;
@@ -37,15 +37,7 @@ pub(crate) fn spawn_level(mut commands: Commands, level_assets: Res<LevelAssets>
         .spawn((
             Name::new("Main Level Archipelago"),
             StateScoped(Screen::Gameplay),
-            Archipelago3d::new(AgentOptions {
-                point_sample_distance: PointSampleDistance3d {
-                    horizontal_distance: 0.6,
-                    distance_above: 1.0,
-                    distance_below: 1.0,
-                    vertical_preference_ratio: 2.0,
-                },
-                ..AgentOptions::from_agent_radius(NPC_RADIUS)
-            }),
+            Archipelago3d::new(ArchipelagoOptions::from_agent_radius(NPC_RADIUS)),
         ))
         .id();
 
