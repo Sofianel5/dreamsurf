@@ -1,0 +1,12 @@
+# This config is used for the release workflow.
+
+[target.wasm32-unknown-unknown]
+rustflags = [
+    "--cfg",
+    "web_sys_unstable_apis",
+    "-Ctarget-feature=+sign-ext,+nontrapping-fptoint",
+]
+
+[profile.web-relese]
+codegen_units = 1
+lto = "Fat"
