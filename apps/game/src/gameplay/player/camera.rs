@@ -32,7 +32,6 @@ use crate::{
     CameraOrder, PostPhysicsAppSystems, RenderLayer,
     gameplay::{
         animation::{AnimationPlayerAncestor, AnimationPlayerOf, AnimationPlayers},
-        level::LevelAssets,
     },
     screens::{Screen, loading::LoadingScreen},
     third_party::{avian3d::CollisionLayer, bevy_trenchbroom::LoadTrenchbroomModel as _},
