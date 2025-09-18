@@ -17,10 +17,11 @@ pub(super) fn plugin(app: &mut App) {
     app.add_systems(
         Update,
         update_crosshair
-            .run_if(in_state(Screen::Gameplay))
+            .run_if(in_state(Screen::Gameplay).or(in_state(Screen::ProceduralGameplay)))
             .in_set(PostPhysicsAppSystems::ChangeUi),
     );
     app.add_systems(OnEnter(Screen::Gameplay), spawn_crosshair);
+    app.add_systems(OnEnter(Screen::ProceduralGameplay), spawn_procedural_crosshair);
 
     app.add_plugins(assets::plugin);
 }
@@ -43,6 +44,30 @@ fn spawn_crosshair(mut commands: Commands, assets: Res<AssetServer>) {
         .with_children(|parent| {
             parent.spawn((
                 Name::new("Crosshair Image"),
+                CrosshairState::default(),
+                ImageNode::new(assets.load(CROSSHAIR_DOT_PATH)),
+            ));
+        });
+}
+
+/// Show a crosshair for procedural gameplay
+#[cfg_attr(feature = "hot_patch", hot)]
+fn spawn_procedural_crosshair(mut commands: Commands, assets: Res<AssetServer>) {
+    commands
+        .spawn((
+            Name::new("Procedural Crosshair"),
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            StateScoped(Screen::ProceduralGameplay),
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                Name::new("Procedural Crosshair Image"),
                 CrosshairState::default(),
                 ImageNode::new(assets.load(CROSSHAIR_DOT_PATH)),
             ));

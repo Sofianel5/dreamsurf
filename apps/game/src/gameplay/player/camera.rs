@@ -52,7 +52,7 @@ pub(super) fn plugin(app: &mut App) {
     app.add_systems(
         Update,
         sync_camera_translation_with_player
-            .run_if(in_state(Screen::Gameplay))
+            .run_if(in_state(Screen::Gameplay).or(in_state(Screen::ProceduralGameplay)))
             .in_set(PostPhysicsAppSystems::Update),
     );
     app.add_systems(
@@ -87,6 +87,7 @@ fn spawn_view_model(
     level_assets: Option<Res<crate::gameplay::level::LevelAssets>>,
     procedural_level_assets: Option<Res<crate::gameplay::procedural_level::ProceduralLevelAssets>>,
     fov: Res<WorldModelFov>,
+    current_screen: Res<State<Screen>>,
 ) {
     use bevy_seedling::spatial::SpatialListener3D;
 
@@ -110,12 +111,20 @@ fn spawn_view_model(
 
     // Optimized for a dark outdoor scene at night
     let exposure = Exposure { ev100: 4.5 };
+
+    // Determine which screen state to scope to
+    let state_scope = match **current_screen {
+        Screen::Gameplay => StateScoped(Screen::Gameplay),
+        Screen::ProceduralGameplay => StateScoped(Screen::ProceduralGameplay),
+        _ => StateScoped(Screen::Gameplay), // fallback
+    };
+
     commands
         .spawn((
             Name::new("Player Camera Parent"),
             PlayerCamera,
             *player_transform,
-            StateScoped(Screen::Gameplay),
+            state_scope,
             StateScoped(LoadingScreen::Shaders),
             AvianPickupActor {
                 prop_filter: SpatialQueryFilter::from_mask(CollisionLayer::Prop),
