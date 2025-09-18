@@ -1,0 +1,38 @@
+[package]
+name = "subfuse"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+bevy = { version = "0.8", features = [
+  "flac",
+  "jpeg",
+  "ktx2",
+  "png",
+  "vorbis",
+  "zstd",
+] }
+bevy_asset_loader = { version = "0.12", features = ["stageless"] }
+bevy_editor_pls = { git = "https://github.com/DGriffin91/bevy_editor_pls", branch = "remove_picking" }
+bevy_editor_pls_default_windows = { git = "https://github.com/DGriffin91/bevy_editor_pls", branch = "remove_picking" }
+bevy_fps_controller = { path = "./bevy_fps_controller" }
+bevy_kira_audio = { version = "0.12", features = ["flac"] }
+bevy_rapier3d = "0.16"
+bevy-web-resizer = "3.0"
+interpolation = "0.2"
+iyes_loopless = "0.7"
+paste = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[patch.crates-io]
+wgpu = { git = "https://github.com/mockersf/wgpu/", branch = "unconditional-clear-workaround" }
+
+# Enable only a small amount of optimization in debug mode
+[profile.dev]
+opt-level = 1
+
+# Enable high optimizations for dependencies (incl. Bevy), but not for our code:
+[profile.dev.package."*"]
+opt-level = 3
