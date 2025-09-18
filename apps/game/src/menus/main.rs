@@ -19,14 +19,16 @@ fn spawn_main_menu(mut commands: Commands) {
         StateScoped(Menu::Main),
         #[cfg(not(target_family = "wasm"))]
         children![
-            widget::button("Play", enter_loading_screen),
+            widget::button("Play Volta", enter_loading_screen),
+            widget::button("Play Procedural", enter_procedural_loading_screen),
             widget::button("Settings", open_settings_menu),
             widget::button("Credits", open_credits_menu),
             widget::button("Exit", exit_app),
         ],
         #[cfg(target_family = "wasm")]
         children![
-            widget::button("Play", enter_loading_screen),
+            widget::button("Play Volta", enter_loading_screen),
+            widget::button("Play Procedural", enter_procedural_loading_screen),
             widget::button("Settings", open_settings_menu),
             widget::button("Credits", open_credits_menu),
         ],
@@ -39,6 +41,15 @@ fn enter_loading_screen(
     mut window: Single<&mut Window>,
 ) {
     next_screen.set(Screen::Loading);
+    window.cursor_options.grab_mode = CursorGrabMode::Locked;
+}
+
+fn enter_procedural_loading_screen(
+    _trigger: Trigger<Pointer<Click>>,
+    mut next_screen: ResMut<NextState<Screen>>,
+    mut window: Single<&mut Window>,
+) {
+    next_screen.set(Screen::ProceduralLoading);
     window.cursor_options.grab_mode = CursorGrabMode::Locked;
 }
 

@@ -2,6 +2,8 @@
 
 mod gameplay;
 pub(crate) mod loading;
+mod procedural_gameplay;
+mod procedural_loading;
 mod splash;
 mod title;
 
@@ -13,6 +15,8 @@ pub(super) fn plugin(app: &mut App) {
     app.add_plugins((
         gameplay::plugin,
         loading::plugin,
+        procedural_gameplay::plugin,
+        procedural_loading::plugin,
         splash::plugin,
         title::plugin,
     ));
@@ -26,5 +30,7 @@ pub(crate) enum Screen {
     Splash,
     Title,
     Loading,
+    ProceduralLoading,
     Gameplay,
+    ProceduralGameplay,
 }

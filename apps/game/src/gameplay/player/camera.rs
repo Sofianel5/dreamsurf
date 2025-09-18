@@ -84,15 +84,26 @@ fn spawn_view_model(
     player_transform: Query<&Transform>,
     mut commands: Commands,
     assets: Res<AssetServer>,
-    level_assets: Res<LevelAssets>,
+    level_assets: Option<Res<crate::gameplay::level::LevelAssets>>,
+    procedural_level_assets: Option<Res<crate::gameplay::procedural_level::ProceduralLevelAssets>>,
     fov: Res<WorldModelFov>,
 ) {
     use bevy_seedling::spatial::SpatialListener3D;
 
     let player_transform = player_transform.get(trigger.target()).unwrap();
+
+    // Get environment maps from either level type
+    let (env_map_diffuse, env_map_specular) = if let Some(level_assets) = level_assets {
+        (level_assets.env_map_diffuse.clone(), level_assets.env_map_specular.clone())
+    } else if let Some(procedural_assets) = procedural_level_assets {
+        (procedural_assets.env_map_diffuse.clone(), procedural_assets.env_map_specular.clone())
+    } else {
+        panic!("No level assets found!");
+    };
+
     let env_map = EnvironmentMapLight {
-        diffuse_map: level_assets.env_map_diffuse.clone(),
-        specular_map: level_assets.env_map_specular.clone(),
+        diffuse_map: env_map_diffuse.clone(),
+        specular_map: env_map_specular.clone(),
         intensity: 300.0,
         ..default()
     };
@@ -148,7 +159,7 @@ fn spawn_view_model(
                 Tonemapping::TonyMcMapface,
                 Bloom::NATURAL,
                 Skybox {
-                    image: level_assets.env_map_specular.clone(),
+                    image: env_map_specular.clone(),
                     brightness: 8.0,
                     ..default()
                 },
