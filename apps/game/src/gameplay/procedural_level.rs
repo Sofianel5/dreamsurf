@@ -63,7 +63,7 @@ fn spawn_ground(commands: &mut Commands, assets: &ProceduralLevelAssets) {
         MeshMaterial3d(assets.ground_material.clone()),
         Transform::from_xyz(0.0, 0.0, 0.0),
         RigidBody::Static,
-        Collider::cuboid(100.0, 0.1, 100.0), // Flat collision for 200x200 plane
+        Collider::cuboid(1000.0, 0.1, 1000.0), // Very large but thin collision box
         StateScoped(Screen::ProceduralGameplay),
     ));
 }
@@ -112,7 +112,7 @@ fn spawn_house_at_position(commands: &mut Commands, assets: &ProceduralLevelAsse
             house_center.z - depth/2.0
         ).with_scale(Vec3::new(width/2.0 - door_width/2.0, height, wall_thickness)),
         RigidBody::Static,
-        Collider::cuboid(0.5, 0.5, 0.5), // Use unit cube, scaling handles size
+        Collider::cuboid(0.5, 0.5, 0.5),
         StateScoped(Screen::ProceduralGameplay),
     ));
 
@@ -247,14 +247,14 @@ impl FromWorld for ProceduralLevelAssets {
         // Create procedural meshes with UV coordinates
         let mut meshes = world.resource_mut::<Assets<Mesh>>();
 
-        // Ground plane with tiling UVs
-        let mut ground_mesh = Plane3d::default().mesh().size(200.0, 200.0).build();
-        // Scale UVs for tiling (20x20 tiles across the ground)
+        // Very large ground plane with tiling UVs
+        let mut ground_mesh = Plane3d::default().mesh().size(2000.0, 2000.0).build();
+        // Scale UVs for tiling (200x200 tiles across the very large ground)
         if let Some(uvs) = ground_mesh.attribute_mut(Mesh::ATTRIBUTE_UV_0) {
             if let bevy::render::mesh::VertexAttributeValues::Float32x2(uv_values) = uvs {
                 for uv in uv_values.iter_mut() {
-                    uv[0] *= 20.0; // Tile 20 times in U
-                    uv[1] *= 20.0; // Tile 20 times in V
+                    uv[0] *= 200.0; // Tile 200 times in U
+                    uv[1] *= 200.0; // Tile 200 times in V
                 }
             }
         }

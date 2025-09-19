@@ -14,7 +14,7 @@ pub(super) fn plugin(app: &mut App) {
     app.add_systems(
         Update,
         (play_jump_grunt, play_step_sound, play_land_sound)
-            .run_if(in_state(Screen::Gameplay))
+            .run_if(in_state(Screen::Gameplay).or(in_state(Screen::ProceduralGameplay)))
             .in_set(PostPhysicsAppSystems::PlaySounds),
     );
 }
