@@ -218,30 +218,52 @@ impl FromWorld for ProceduralLevelAssets {
         let env_map_specular = assets.load("cubemaps/NightSkyHDRI001_4K-HDR_specular.ktx2");
         let env_map_diffuse = assets.load("cubemaps/NightSkyHDRI001_4K-HDR_diffuse.ktx2");
 
-        // Create procedural meshes
+        // Load textures from darkmod assets (these exist in your project!)
+        let grass_texture = assets.load("textures/darkmod/nature/dirt/dirt_002_dark.png");
+        let stone_texture = assets.load("textures/darkmod/stone/cobblestones/blocks_uneven_blue.png");
+        let wood_texture = assets.load("textures/darkmod/wood/boards/weathered.png");
+
+        // Create procedural meshes with UV coordinates
         let mut meshes = world.resource_mut::<Assets<Mesh>>();
-        let ground_mesh = meshes.add(Plane3d::default().mesh().size(200.0, 200.0));
+
+        // Ground plane with tiling UVs
+        let mut ground_mesh = Plane3d::default().mesh().size(200.0, 200.0).build();
+        // Scale UVs for tiling (20x20 tiles across the ground)
+        if let Some(uvs) = ground_mesh.attribute_mut(Mesh::ATTRIBUTE_UV_0) {
+            if let bevy::render::mesh::VertexAttributeValues::Float32x2(uv_values) = uvs {
+                for uv in uv_values.iter_mut() {
+                    uv[0] *= 20.0; // Tile 20 times in U
+                    uv[1] *= 20.0; // Tile 20 times in V
+                }
+            }
+        }
+        let ground_mesh = meshes.add(ground_mesh);
+
         let wall_mesh = meshes.add(Cuboid::default());
         let roof_mesh = meshes.add(Cuboid::default());
         drop(meshes); // Release the borrow
 
-        // Create materials
+        // Create materials with textures
         let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
+
         let ground_material = materials.add(StandardMaterial {
-            base_color: Color::srgb(0.2, 0.7, 0.2), // Green grass color
-            perceptual_roughness: 0.8,
+            base_color_texture: Some(grass_texture),
+            perceptual_roughness: 0.9,
+            metallic: 0.0,
             ..default()
         });
 
         let wall_material = materials.add(StandardMaterial {
-            base_color: Color::srgb(0.7, 0.6, 0.5), // Stone color
-            perceptual_roughness: 0.9,
+            base_color_texture: Some(stone_texture),
+            perceptual_roughness: 0.95,
+            metallic: 0.0,
             ..default()
         });
 
         let roof_material = materials.add(StandardMaterial {
-            base_color: Color::srgb(0.5, 0.3, 0.2), // Wood color
-            perceptual_roughness: 0.7,
+            base_color_texture: Some(wood_texture),
+            perceptual_roughness: 0.8,
+            metallic: 0.0,
             ..default()
         });
 
