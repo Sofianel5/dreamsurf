@@ -48,8 +48,8 @@ pub(crate) fn spawn_procedural_level(mut commands: Commands, assets: Res<Procedu
     // Generate the ground plane
     spawn_ground(&mut commands, &assets);
 
-    // Generate the simple house
-    spawn_simple_house(&mut commands, &assets);
+    // Generate multiple houses in random locations
+    spawn_multiple_houses(&mut commands, &assets);
 
     // Spawn player
     spawn_procedural_player(&mut commands);
@@ -69,9 +69,30 @@ fn spawn_ground(commands: &mut Commands, assets: &ProceduralLevelAssets) {
 }
 
 #[cfg_attr(feature = "hot_patch", hot)]
-fn spawn_simple_house(commands: &mut Commands, assets: &ProceduralLevelAssets) {
-    let house_center = Vec3::new(0.0, 0.0, 0.0);
+fn spawn_multiple_houses(commands: &mut Commands, assets: &ProceduralLevelAssets) {
+    // Define the area where houses can spawn (avoiding the edges)
+    let spawn_area = 80.0; // Keep houses within ±80 units from center (ground is 200x200)
+    let min_distance = 30.0; // Minimum distance between houses
 
+    // List of house positions
+    let house_positions = vec![
+        Vec3::new(0.0, 0.0, 0.0),        // Center house
+        Vec3::new(40.0, 0.0, 30.0),      // Northeast
+        Vec3::new(-45.0, 0.0, -20.0),    // Southwest
+        Vec3::new(25.0, 0.0, -40.0),     // Southeast
+        Vec3::new(-30.0, 0.0, 35.0),     // Northwest
+        Vec3::new(60.0, 0.0, -10.0),     // East
+        Vec3::new(-60.0, 0.0, 5.0),      // West
+    ];
+
+    // Spawn a house at each position
+    for (i, position) in house_positions.iter().enumerate() {
+        spawn_house_at_position(commands, assets, *position, i);
+    }
+}
+
+#[cfg_attr(feature = "hot_patch", hot)]
+fn spawn_house_at_position(commands: &mut Commands, assets: &ProceduralLevelAssets, house_center: Vec3, house_id: usize) {
     // House dimensions
     let width = 20.0;
     let depth = 15.0;
@@ -82,7 +103,7 @@ fn spawn_simple_house(commands: &mut Commands, assets: &ProceduralLevelAssets) {
     // Front wall (with door opening)
     // Left part of front wall
     commands.spawn((
-        Name::new("House Front Wall Left"),
+        Name::new(format!("House {} Front Wall Left", house_id)),
         Mesh3d(assets.wall_mesh.clone()),
         MeshMaterial3d(assets.wall_material.clone()),
         Transform::from_xyz(
@@ -97,7 +118,7 @@ fn spawn_simple_house(commands: &mut Commands, assets: &ProceduralLevelAssets) {
 
     // Right part of front wall
     commands.spawn((
-        Name::new("House Front Wall Right"),
+        Name::new(format!("House {} Front Wall Right", house_id)),
         Mesh3d(assets.wall_mesh.clone()),
         MeshMaterial3d(assets.wall_material.clone()),
         Transform::from_xyz(
@@ -112,7 +133,7 @@ fn spawn_simple_house(commands: &mut Commands, assets: &ProceduralLevelAssets) {
 
     // Back wall
     commands.spawn((
-        Name::new("House Back Wall"),
+        Name::new(format!("House {} Back Wall", house_id)),
         Mesh3d(assets.wall_mesh.clone()),
         MeshMaterial3d(assets.wall_material.clone()),
         Transform::from_xyz(
@@ -127,7 +148,7 @@ fn spawn_simple_house(commands: &mut Commands, assets: &ProceduralLevelAssets) {
 
     // Left wall
     commands.spawn((
-        Name::new("House Left Wall"),
+        Name::new(format!("House {} Left Wall", house_id)),
         Mesh3d(assets.wall_mesh.clone()),
         MeshMaterial3d(assets.wall_material.clone()),
         Transform::from_xyz(
@@ -142,7 +163,7 @@ fn spawn_simple_house(commands: &mut Commands, assets: &ProceduralLevelAssets) {
 
     // Right wall
     commands.spawn((
-        Name::new("House Right Wall"),
+        Name::new(format!("House {} Right Wall", house_id)),
         Mesh3d(assets.wall_mesh.clone()),
         MeshMaterial3d(assets.wall_material.clone()),
         Transform::from_xyz(
@@ -157,7 +178,7 @@ fn spawn_simple_house(commands: &mut Commands, assets: &ProceduralLevelAssets) {
 
     // Roof
     commands.spawn((
-        Name::new("House Roof"),
+        Name::new(format!("House {} Roof", house_id)),
         Mesh3d(assets.roof_mesh.clone()),
         MeshMaterial3d(assets.roof_material.clone()),
         Transform::from_xyz(
