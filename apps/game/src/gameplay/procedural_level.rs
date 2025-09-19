@@ -100,79 +100,26 @@ fn spawn_house_at_position(commands: &mut Commands, assets: &ProceduralLevelAsse
     let wall_thickness = 1.0;
     let door_width = 2.0;
 
-    // Front wall (with door opening)
-    // Left part of front wall
-    commands.spawn((
-        Name::new(format!("House {} Front Wall Left", house_id)),
-        Mesh3d(assets.wall_mesh.clone()),
-        MeshMaterial3d(assets.wall_material.clone()),
-        Transform::from_xyz(
-            house_center.x - width/2.0 + (width/2.0 - door_width/2.0)/2.0,
-            house_center.y + height/2.0,
-            house_center.z - depth/2.0
-        ).with_scale(Vec3::new(width/2.0 - door_width/2.0, height, wall_thickness)),
-        RigidBody::Static,
-        Collider::cuboid(0.5, 0.5, 0.5),
-        StateScoped(Screen::ProceduralGameplay),
-    ));
+    // Spawn all the visual walls (same as before)
+    spawn_house_walls(commands, assets, house_center, house_id, width, depth, height, wall_thickness, door_width);
 
-    // Right part of front wall
+    // Single collision box for the entire house outline (hollow box)
     commands.spawn((
-        Name::new(format!("House {} Front Wall Right", house_id)),
-        Mesh3d(assets.wall_mesh.clone()),
-        MeshMaterial3d(assets.wall_material.clone()),
-        Transform::from_xyz(
-            house_center.x + width/2.0 - (width/2.0 - door_width/2.0)/2.0,
-            house_center.y + height/2.0,
-            house_center.z - depth/2.0
-        ).with_scale(Vec3::new(width/2.0 - door_width/2.0, height, wall_thickness)),
+        Name::new(format!("House {} Collision", house_id)),
+        Transform::from_xyz(house_center.x, house_center.y + height/2.0, house_center.z),
         RigidBody::Static,
-        Collider::cuboid(0.5, 0.5, 0.5),
-        StateScoped(Screen::ProceduralGameplay),
-    ));
-
-    // Back wall
-    commands.spawn((
-        Name::new(format!("House {} Back Wall", house_id)),
-        Mesh3d(assets.wall_mesh.clone()),
-        MeshMaterial3d(assets.wall_material.clone()),
-        Transform::from_xyz(
-            house_center.x,
-            house_center.y + height/2.0,
-            house_center.z + depth/2.0
-        ).with_scale(Vec3::new(width, height, wall_thickness)),
-        RigidBody::Static,
-        Collider::cuboid(0.5, 0.5, 0.5),
-        StateScoped(Screen::ProceduralGameplay),
-    ));
-
-    // Left wall
-    commands.spawn((
-        Name::new(format!("House {} Left Wall", house_id)),
-        Mesh3d(assets.wall_mesh.clone()),
-        MeshMaterial3d(assets.wall_material.clone()),
-        Transform::from_xyz(
-            house_center.x - width/2.0,
-            house_center.y + height/2.0,
-            house_center.z
-        ).with_scale(Vec3::new(wall_thickness, height, depth)),
-        RigidBody::Static,
-        Collider::cuboid(0.5, 0.5, 0.5),
-        StateScoped(Screen::ProceduralGameplay),
-    ));
-
-    // Right wall
-    commands.spawn((
-        Name::new(format!("House {} Right Wall", house_id)),
-        Mesh3d(assets.wall_mesh.clone()),
-        MeshMaterial3d(assets.wall_material.clone()),
-        Transform::from_xyz(
-            house_center.x + width/2.0,
-            house_center.y + height/2.0,
-            house_center.z
-        ).with_scale(Vec3::new(wall_thickness, height, depth)),
-        RigidBody::Static,
-        Collider::cuboid(0.5, 0.5, 0.5),
+        Collider::compound(vec![
+            // Front wall left
+            (Vec3::new(-width/2.0 + (width/2.0 - door_width/2.0)/2.0, 0.0, -depth/2.0), Quat::IDENTITY, Collider::cuboid((width/2.0 - door_width/2.0)/2.0, height/2.0, wall_thickness/2.0)),
+            // Front wall right
+            (Vec3::new(width/2.0 - (width/2.0 - door_width/2.0)/2.0, 0.0, -depth/2.0), Quat::IDENTITY, Collider::cuboid((width/2.0 - door_width/2.0)/2.0, height/2.0, wall_thickness/2.0)),
+            // Back wall
+            (Vec3::new(0.0, 0.0, depth/2.0), Quat::IDENTITY, Collider::cuboid(width/2.0, height/2.0, wall_thickness/2.0)),
+            // Left wall
+            (Vec3::new(-width/2.0, 0.0, 0.0), Quat::IDENTITY, Collider::cuboid(wall_thickness/2.0, height/2.0, depth/2.0)),
+            // Right wall
+            (Vec3::new(width/2.0, 0.0, 0.0), Quat::IDENTITY, Collider::cuboid(wall_thickness/2.0, height/2.0, depth/2.0)),
+        ]),
         StateScoped(Screen::ProceduralGameplay),
     ));
 
@@ -300,4 +247,71 @@ impl FromWorld for ProceduralLevelAssets {
             env_map_diffuse,
         }
     }
+}
+
+fn spawn_house_walls(commands: &mut Commands, assets: &ProceduralLevelAssets, house_center: Vec3, house_id: usize, width: f32, depth: f32, height: f32, wall_thickness: f32, door_width: f32) {
+    // Front wall (with door opening) - Left part
+    commands.spawn((
+        Name::new(format!("House {} Front Wall Left", house_id)),
+        Mesh3d(assets.wall_mesh.clone()),
+        MeshMaterial3d(assets.wall_material.clone()),
+        Transform::from_xyz(
+            house_center.x - width/2.0 + (width/2.0 - door_width/2.0)/2.0,
+            house_center.y + height/2.0,
+            house_center.z - depth/2.0
+        ).with_scale(Vec3::new(width/2.0 - door_width/2.0, height, wall_thickness)),
+        StateScoped(Screen::ProceduralGameplay),
+    ));
+
+    // Front wall (with door opening) - Right part
+    commands.spawn((
+        Name::new(format!("House {} Front Wall Right", house_id)),
+        Mesh3d(assets.wall_mesh.clone()),
+        MeshMaterial3d(assets.wall_material.clone()),
+        Transform::from_xyz(
+            house_center.x + width/2.0 - (width/2.0 - door_width/2.0)/2.0,
+            house_center.y + height/2.0,
+            house_center.z - depth/2.0
+        ).with_scale(Vec3::new(width/2.0 - door_width/2.0, height, wall_thickness)),
+        StateScoped(Screen::ProceduralGameplay),
+    ));
+
+    // Back wall
+    commands.spawn((
+        Name::new(format!("House {} Back Wall", house_id)),
+        Mesh3d(assets.wall_mesh.clone()),
+        MeshMaterial3d(assets.wall_material.clone()),
+        Transform::from_xyz(
+            house_center.x,
+            house_center.y + height/2.0,
+            house_center.z + depth/2.0
+        ).with_scale(Vec3::new(width, height, wall_thickness)),
+        StateScoped(Screen::ProceduralGameplay),
+    ));
+
+    // Left wall
+    commands.spawn((
+        Name::new(format!("House {} Left Wall", house_id)),
+        Mesh3d(assets.wall_mesh.clone()),
+        MeshMaterial3d(assets.wall_material.clone()),
+        Transform::from_xyz(
+            house_center.x - width/2.0,
+            house_center.y + height/2.0,
+            house_center.z
+        ).with_scale(Vec3::new(wall_thickness, height, depth)),
+        StateScoped(Screen::ProceduralGameplay),
+    ));
+
+    // Right wall
+    commands.spawn((
+        Name::new(format!("House {} Right Wall", house_id)),
+        Mesh3d(assets.wall_mesh.clone()),
+        MeshMaterial3d(assets.wall_material.clone()),
+        Transform::from_xyz(
+            house_center.x + width/2.0,
+            house_center.y + height/2.0,
+            house_center.z
+        ).with_scale(Vec3::new(wall_thickness, height, depth)),
+        StateScoped(Screen::ProceduralGameplay),
+    ));
 }
