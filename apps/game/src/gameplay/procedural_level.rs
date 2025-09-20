@@ -57,13 +57,37 @@ pub(crate) fn spawn_procedural_level(mut commands: Commands, assets: Res<Procedu
 
 #[cfg_attr(feature = "hot_patch", hot)]
 fn spawn_ground(commands: &mut Commands, assets: &ProceduralLevelAssets) {
+    // Generate hilly terrain using a heightfield collider
+    let terrain_size = 200;
+    let terrain_scale = 2.0;
+    let mut heights = vec![vec![0.0; terrain_size]; terrain_size];
+
+    // Generate hills using simple noise-like patterns
+    for x in 0..terrain_size {
+        for z in 0..terrain_size {
+            let fx = x as f32 / terrain_size as f32;
+            let fz = z as f32 / terrain_size as f32;
+
+            // Combine multiple sine waves for rolling hills
+            let height =
+                (fx * 8.0).sin() * (fz * 8.0).sin() * 3.0 +  // Main hills
+                (fx * 16.0).sin() * (fz * 16.0).sin() * 1.5 + // Smaller variations
+                (fx * 4.0).sin() * (fz * 4.0).sin() * 5.0;    // Large rolling hills
+
+            heights[x][z] = height;
+        }
+    }
+
     commands.spawn((
         Name::new("Ground"),
         Mesh3d(assets.ground_mesh.clone()),
         MeshMaterial3d(assets.ground_material.clone()),
-        Transform::from_xyz(0.0, 0.0, 0.0),
+        Transform::from_xyz(0.0, 0.0, 0.0).with_scale(Vec3::new(terrain_scale, 1.0, terrain_scale)),
         RigidBody::Static,
-        Collider::cuboid(1000.0, 0.1, 1000.0), // Very large but thin collision box
+        Collider::heightfield(
+            heights,
+            Vec3::new(terrain_size as f32 * terrain_scale, 1.0, terrain_size as f32 * terrain_scale),
+        ),
         StateScoped(Screen::ProceduralGameplay),
     ));
 }
@@ -71,23 +95,26 @@ fn spawn_ground(commands: &mut Commands, assets: &ProceduralLevelAssets) {
 #[cfg_attr(feature = "hot_patch", hot)]
 fn spawn_multiple_houses(commands: &mut Commands, assets: &ProceduralLevelAssets) {
     // Define the area where houses can spawn (avoiding the edges)
-    let spawn_area = 80.0; // Keep houses within ±80 units from center (ground is 200x200)
-    let min_distance = 30.0; // Minimum distance between houses
+    let _spawn_area = 80.0; // Keep houses within ±80 units from center (ground is 200x200)
+    let _min_distance = 30.0; // Minimum distance between houses
 
-    // List of house positions
+    // List of house positions (x, z coordinates)
     let house_positions = vec![
-        Vec3::new(0.0, 0.0, 0.0),        // Center house
-        Vec3::new(40.0, 0.0, 30.0),      // Northeast
-        Vec3::new(-45.0, 0.0, -20.0),    // Southwest
-        Vec3::new(25.0, 0.0, -40.0),     // Southeast
-        Vec3::new(-30.0, 0.0, 35.0),     // Northwest
-        Vec3::new(60.0, 0.0, -10.0),     // East
-        Vec3::new(-60.0, 0.0, 5.0),      // West
+        Vec2::new(0.0, 0.0),        // Center house
+        Vec2::new(40.0, 30.0),      // Northeast
+        Vec2::new(-45.0, -20.0),    // Southwest
+        Vec2::new(25.0, -40.0),     // Southeast
+        Vec2::new(-30.0, 35.0),     // Northwest
+        Vec2::new(60.0, -10.0),     // East
+        Vec2::new(-60.0, 5.0),      // West
     ];
 
-    // Spawn a house at each position
-    for (i, position) in house_positions.iter().enumerate() {
-        spawn_house_at_position(commands, assets, *position, i);
+    // Spawn a house at each position, calculating height from terrain
+    for (i, pos_2d) in house_positions.iter().enumerate() {
+        // Calculate terrain height at this position
+        let terrain_height = get_terrain_height_at(pos_2d.x, pos_2d.y);
+        let position = Vec3::new(pos_2d.x, terrain_height, pos_2d.y);
+        spawn_house_at_position(commands, assets, position, i);
     }
 }
 
@@ -141,14 +168,37 @@ fn spawn_house_at_position(commands: &mut Commands, assets: &ProceduralLevelAsse
 
 #[cfg_attr(feature = "hot_patch", hot)]
 fn spawn_procedural_player(commands: &mut Commands) {
+    // Calculate terrain height at spawn position
+    let spawn_x = -30.0;
+    let spawn_z = 0.0;
+    let terrain_height = get_terrain_height_at(spawn_x, spawn_z);
+
     // Spawn player entity at a good spawn position
     commands.spawn((
         Name::new("Procedural Player"),
         crate::gameplay::player::Player,
-        Transform::from_xyz(-30.0, 2.0, 0.0), // Spawn outside the house
+        Transform::from_xyz(spawn_x, terrain_height + 2.0, spawn_z), // Spawn above terrain
         Visibility::default(),
         StateScoped(Screen::ProceduralGameplay),
     ));
+}
+
+// Helper function to calculate terrain height at a given position
+fn get_terrain_height_at(x: f32, z: f32) -> f32 {
+    let terrain_size = 200.0;
+    let terrain_scale = 2.0;
+
+    // Convert world coordinates to normalized coordinates
+    let fx = (x / (terrain_size * terrain_scale) + 0.5).clamp(0.0, 1.0);
+    let fz = (z / (terrain_size * terrain_scale) + 0.5).clamp(0.0, 1.0);
+
+    // Calculate height using the same formula as terrain generation
+    let height =
+        (fx * 8.0).sin() * (fz * 8.0).sin() * 3.0 +  // Main hills
+        (fx * 16.0).sin() * (fz * 16.0).sin() * 1.5 + // Smaller variations
+        (fx * 4.0).sin() * (fz * 4.0).sin() * 5.0;    // Large rolling hills
+
+    height
 }
 
 #[derive(Component, Debug, Reflect)]
