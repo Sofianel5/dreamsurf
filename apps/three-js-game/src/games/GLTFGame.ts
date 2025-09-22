@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GLTFAssetLoader } from '@/loaders/GLTFAssetLoader';
+import { AssetLoader } from '@/loaders/AssetLoader';
 import { Player } from '@/player/Player';
 import { Sky } from '@/environment/Sky';
 import { GameSettings } from '@/ui/HomeScreen';

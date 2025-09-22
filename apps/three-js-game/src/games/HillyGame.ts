@@ -132,18 +132,6 @@ export class HillyGame {
   }
 
   private async addVegetation(vegetationGenerator: VegetationGenerator): Promise<void> {
-    // Add realistic grass GLTF models as 3D objects
-    for (let i = 0; i < 30; i++) {
-      const x = (Math.random() - 0.5) * 160;
-      const z = (Math.random() - 0.5) * 160;
-      const y = this.getTerrainHeightAt(x, z);
-
-      const grass = await vegetationGenerator.generateRealisticGrass(new THREE.Vector3(x, y, z));
-      if (grass) {
-        this.scene.add(grass);
-      }
-    }
-
     // Add ivy patches for decoration
     for (let i = 0; i < 20; i++) {
       const x = (Math.random() - 0.5) * 150;
