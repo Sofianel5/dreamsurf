@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { GLTFAssetLoader } from '../loaders/GLTFAssetLoader';
+import { AssetLoader } from '../loaders/AssetLoader';
 
 export class GLTFHouseGenerator {
-  private loader: GLTFAssetLoader;
+  private loader: AssetLoader;
   private containerModels = [
     '/models/containers/crate01_big.gltf',
     '/models/containers/crate01_small.gltf',
@@ -14,7 +14,7 @@ export class GLTFHouseGenerator {
   ];
 
   constructor() {
-    this.loader = new GLTFAssetLoader();
+    this.loader = AssetLoader.getInstance();
   }
 
   async generateHouse(): Promise<THREE.Group> {

@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { GLTFAssetLoader } from '@/loaders/GLTFAssetLoader';
+import { AssetLoader } from '@/loaders/AssetLoader';
 import { Player } from '@/player/Player';
 import { Sky } from '@/environment/Sky';
-import { GameSettings } from '@/ui/HomeScreen';
+import { GameSettings } from '@/App';
 
 export class MazeGame {
   private scene: THREE.Scene;
@@ -13,7 +13,7 @@ export class MazeGame {
   private isRunning: boolean = false;
   private animationId: number | null = null;
   private settings: GameSettings;
-  private gltfLoader: GLTFAssetLoader;
+  private assetLoader: AssetLoader;
   private maze: THREE.Group | null = null;
 
   constructor(settings?: GameSettings) {
@@ -23,7 +23,7 @@ export class MazeGame {
       graphicsQuality: 'medium'
     };
 
-    this.gltfLoader = new GLTFAssetLoader();
+    this.assetLoader = AssetLoader.getInstance();
 
     // Initialize Three.js components
     this.scene = new THREE.Scene();
@@ -40,7 +40,7 @@ export class MazeGame {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    document.body.appendChild(this.renderer.domElement);
+    // Canvas will be appended by React component
 
     this.clock = new THREE.Clock();
 
@@ -99,7 +99,7 @@ export class MazeGame {
   private async loadMaze(): Promise<void> {
     try {
       console.log('Loading maze model...');
-      this.maze = await this.gltfLoader.loadModel('/models/maze/scene.gltf');
+      this.maze = await this.assetLoader.loadModel('/models/maze/scene.gltf');
 
       // Position and scale the maze appropriately
       this.maze.position.set(0, 0, 0);
@@ -215,6 +215,10 @@ export class MazeGame {
     if (this.player) {
       this.player.updateSettings(settings);
     }
+  }
+
+  public getRenderer(): THREE.WebGLRenderer {
+    return this.renderer;
   }
 
   private animate = (): void => {

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { AssetLoader } from '@/loaders/AssetLoader';
 import { Player } from '@/player/Player';
 import { Sky } from '@/environment/Sky';
-import { GameSettings } from '@/ui/HomeScreen';
+import { GameSettings } from '@/App';
 
 export class GLTFGame {
   private scene: THREE.Scene;
@@ -13,7 +13,7 @@ export class GLTFGame {
   private isRunning: boolean = false;
   private animationId: number | null = null;
   private settings: GameSettings;
-  private gltfLoader: GLTFAssetLoader;
+  private assetLoader: AssetLoader;
 
   constructor(settings?: GameSettings) {
     this.settings = settings || {
@@ -22,7 +22,7 @@ export class GLTFGame {
       graphicsQuality: 'medium'
     };
 
-    this.gltfLoader = new GLTFAssetLoader();
+    this.assetLoader = AssetLoader.getInstance();
 
     // Initialize Three.js components
     this.scene = new THREE.Scene();
@@ -39,7 +39,7 @@ export class GLTFGame {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    document.body.appendChild(this.renderer.domElement);
+    // Canvas will be appended by React component
 
     this.clock = new THREE.Clock();
 
@@ -95,7 +95,7 @@ export class GLTFGame {
 
   private async createGrassTerrain(): Promise<void> {
     // 1) Load ONE grass model
-    const gltf = await this.gltfLoader.loadModel('/models/grass.glb'); // convert to .glb if you can
+    const gltf = await this.assetLoader.loadModel('/models/realistic_grass/scene.gltf');
     // Find a single mesh (ideally 1 material). If your asset has multiple child meshes,
     // pre-bake to a single mesh+material first (see notes below).
     let src: THREE.Mesh | null = null;
@@ -163,6 +163,10 @@ export class GLTFGame {
     if (this.player) {
       this.player.updateSettings(settings);
     }
+  }
+
+  public getRenderer(): THREE.WebGLRenderer {
+    return this.renderer;
   }
 
   private animate = (): void => {

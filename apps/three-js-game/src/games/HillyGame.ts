@@ -5,7 +5,7 @@ import { GLTFHouseGenerator } from '@/objects/GLTFHouseGenerator';
 import { VegetationGenerator } from '@/objects/VegetationGenerator';
 import { Player } from '@/player/Player';
 import { Sky } from '@/environment/Sky';
-import { GameSettings } from '@/ui/HomeScreen';
+import { GameSettings } from '@/App';
 
 export class HillyGame {
   private scene: THREE.Scene;
@@ -38,7 +38,7 @@ export class HillyGame {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    document.body.appendChild(this.renderer.domElement);
+    // Canvas will be appended by React component
 
     this.clock = new THREE.Clock();
 
@@ -230,6 +230,10 @@ export class HillyGame {
     if (this.player) {
       this.player.updateSettings(settings);
     }
+  }
+
+  public getRenderer(): THREE.WebGLRenderer {
+    return this.renderer;
   }
 
   private animate = (): void => {

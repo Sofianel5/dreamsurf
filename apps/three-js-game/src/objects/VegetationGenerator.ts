@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { GLTFAssetLoader } from '../loaders/GLTFAssetLoader';
+import { AssetLoader } from '../loaders/AssetLoader';
 
 export class VegetationGenerator {
-  private loader: GLTFAssetLoader;
+  private loader: AssetLoader;
 
   constructor() {
-    this.loader = new GLTFAssetLoader();
+    this.loader = AssetLoader.getInstance();
   }
 
   async generateIvy(position: THREE.Vector3): Promise<THREE.Group | null> {
