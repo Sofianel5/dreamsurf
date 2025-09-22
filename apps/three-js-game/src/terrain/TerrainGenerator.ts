@@ -2,7 +2,12 @@ import * as THREE from 'three';
 
 export class TerrainGenerator {
   private size: number = 200;
-  private segments: number = 100;
+  private segments: number = 200; // Increased for better texture mapping on slopes
+  private textureLoader: THREE.TextureLoader;
+
+  constructor() {
+    this.textureLoader = new THREE.TextureLoader();
+  }
 
   public generate(): THREE.Mesh {
     // Create plane geometry
@@ -40,10 +45,19 @@ export class TerrainGenerator {
     // Update normals for proper lighting
     geometry.computeVertexNormals();
 
-    // Create textured material
-    const texture = this.createGroundTexture();
-    const material = new THREE.MeshLambertMaterial({
-      map: texture,
+    // Load the grass texture directly
+    const grassTexture = this.textureLoader.load('/models/realistic_grass/textures/grasss_baseColor.jpeg');
+    grassTexture.wrapS = THREE.RepeatWrapping;
+    grassTexture.wrapT = THREE.RepeatWrapping;
+    grassTexture.repeat.set(50, 50); // Tile the texture across the terrain
+    grassTexture.anisotropy = 16; // Improve texture quality at angles
+    grassTexture.colorSpace = THREE.SRGBColorSpace;
+
+    // Create material with the grass texture
+    const material = new THREE.MeshStandardMaterial({
+      map: grassTexture,
+      roughness: 0.9,
+      metalness: 0,
       side: THREE.DoubleSide,
     });
 
@@ -51,37 +65,5 @@ export class TerrainGenerator {
     mesh.receiveShadow = true;
 
     return mesh;
-  }
-
-  private createGroundTexture(): THREE.Texture {
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 512;
-    const context = canvas.getContext('2d')!;
-
-    // Create a grass-like texture
-    const gradient = context.createLinearGradient(0, 0, 0, 512);
-    gradient.addColorStop(0, '#3a5f3a');
-    gradient.addColorStop(0.5, '#4a6f4a');
-    gradient.addColorStop(1, '#2a4f2a');
-
-    context.fillStyle = gradient;
-    context.fillRect(0, 0, 512, 512);
-
-    // Add some noise for texture
-    for (let i = 0; i < 5000; i++) {
-      const x = Math.random() * 512;
-      const y = Math.random() * 512;
-      const brightness = 0.3 + Math.random() * 0.2;
-      context.fillStyle = `rgba(${brightness * 100}, ${brightness * 150}, ${brightness * 100}, 0.5)`;
-      context.fillRect(x, y, 2, 2);
-    }
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(20, 20);
-
-    return texture;
   }
 }

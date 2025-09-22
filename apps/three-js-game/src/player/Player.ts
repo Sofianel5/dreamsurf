@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GameSettings } from '@/ui/HomeScreen';
 
 export class Player {
   private camera: THREE.PerspectiveCamera;
@@ -9,19 +10,30 @@ export class Player {
   private mouse: { x: number; y: number } = { x: 0, y: 0 };
   private isMouseLocked: boolean = false;
 
-  private moveSpeed: number = 500;
-  private jumpSpeed: number = 20;
+  private moveSpeed: number = 1000;
+  private mouseSensitivity: number = 0.002;
+  private jumpSpeed: number = 10;
   private gravity: number = -35;
   private isGrounded: boolean = true;
 
-  constructor(camera: THREE.PerspectiveCamera, scene: THREE.Scene) {
+  constructor(camera: THREE.PerspectiveCamera, scene: THREE.Scene, settings?: GameSettings) {
     this.camera = camera;
     this.scene = scene;
+
+    // Apply settings if provided
+    if (settings) {
+      this.updateSettings(settings);
+    }
 
     // Set initial position
     this.camera.position.set(-30, 10, 0);
 
     this.initControls();
+  }
+
+  public updateSettings(settings: GameSettings): void {
+    this.moveSpeed = settings.moveSpeed;
+    this.mouseSensitivity = settings.mouseSensitivity;
   }
 
   private initControls(): void {
@@ -47,8 +59,8 @@ export class Player {
 
     document.addEventListener('mousemove', (event) => {
       if (this.isMouseLocked) {
-        this.mouse.x = event.movementX * 0.002;
-        this.mouse.y = event.movementY * 0.002;
+        this.mouse.x = event.movementX * this.mouseSensitivity;
+        this.mouse.y = event.movementY * this.mouseSensitivity;
         this.updateMouseLook();
       }
     });

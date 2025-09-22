@@ -1,8 +1,11 @@
 import * as THREE from 'three';
 import { TerrainGenerator } from '@/terrain/TerrainGenerator';
 import { HouseGenerator } from '@/objects/HouseGenerator';
+import { GLTFHouseGenerator } from '@/objects/GLTFHouseGenerator';
+import { VegetationGenerator } from '@/objects/VegetationGenerator';
 import { Player } from '@/player/Player';
 import { Sky } from '@/environment/Sky';
+import { GameSettings } from '@/ui/HomeScreen';
 
 export class Game {
   private scene: THREE.Scene;
@@ -10,8 +13,16 @@ export class Game {
   private renderer: THREE.WebGLRenderer;
   private player: Player;
   private clock: THREE.Clock;
+  private isRunning: boolean = false;
+  private animationId: number | null = null;
+  private settings: GameSettings;
 
-  constructor() {
+  constructor(settings?: GameSettings) {
+    this.settings = settings || {
+      moveSpeed: 1000,
+      mouseSensitivity: 0.002,
+      graphicsQuality: 'medium'
+    };
     // Initialize Three.js components
     this.scene = new THREE.Scene();
     this.scene.fog = new THREE.Fog(0x87CEEB, 50, 500);
@@ -36,8 +47,8 @@ export class Game {
     this.initTerrain();
     this.initObjects();
 
-    // Initialize player
-    this.player = new Player(this.camera, this.scene);
+    // Initialize player with settings
+    this.player = new Player(this.camera, this.scene, this.settings);
 
     // Initialize environment
     const sky = new Sky(this.scene);
@@ -79,8 +90,10 @@ export class Game {
     this.scene.add(terrain);
   }
 
-  private initObjects(): void {
-    const houseGenerator = new HouseGenerator();
+  private async initObjects(): Promise<void> {
+    const gltfHouseGenerator = new GLTFHouseGenerator();
+    const vegetationGenerator = new VegetationGenerator();
+    const houseGenerator = new HouseGenerator(); // Fallback
 
     // Define house positions
     const housePositions = [
@@ -93,17 +106,67 @@ export class Game {
       { x: -60, z: 5 },
     ];
 
-    // Generate houses at each position
-    housePositions.forEach(pos => {
+    // Generate houses with GLTF models
+    for (const pos of housePositions) {
       const y = this.getTerrainHeightAt(pos.x, pos.z);
-      const house = houseGenerator.generateHouse();
-      house.position.set(pos.x, y, pos.z);
-      house.rotation.y = Math.random() * Math.PI * 2;
-      this.scene.add(house);
-    });
+
+      try {
+        const house = await gltfHouseGenerator.generateHouse();
+        house.position.set(pos.x, y, pos.z);
+        house.rotation.y = Math.random() * Math.PI * 2;
+        this.scene.add(house);
+      } catch (error) {
+        // Fallback to procedural house
+        const house = houseGenerator.generateHouse();
+        house.position.set(pos.x, y, pos.z);
+        house.rotation.y = Math.random() * Math.PI * 2;
+        this.scene.add(house);
+      }
+    }
+
+    // Add vegetation
+    await this.addVegetation(vegetationGenerator);
 
     // Add some trees
     this.addTrees();
+  }
+
+  private async addVegetation(vegetationGenerator: VegetationGenerator): Promise<void> {
+    // Add realistic grass GLTF models as 3D objects
+    for (let i = 0; i < 30; i++) {
+      const x = (Math.random() - 0.5) * 160;
+      const z = (Math.random() - 0.5) * 160;
+      const y = this.getTerrainHeightAt(x, z);
+
+      const grass = await vegetationGenerator.generateRealisticGrass(new THREE.Vector3(x, y, z));
+      if (grass) {
+        this.scene.add(grass);
+      }
+    }
+
+    // Add ivy patches for decoration
+    for (let i = 0; i < 20; i++) {
+      const x = (Math.random() - 0.5) * 150;
+      const z = (Math.random() - 0.5) * 150;
+      const y = this.getTerrainHeightAt(x, z);
+
+      const ivy = await vegetationGenerator.generateIvy(new THREE.Vector3(x, y, z));
+      if (ivy) {
+        this.scene.add(ivy);
+      }
+    }
+
+    // Add a few foxes as wildlife
+    for (let i = 0; i < 3; i++) {
+      const x = (Math.random() - 0.5) * 100;
+      const z = (Math.random() - 0.5) * 100;
+      const y = this.getTerrainHeightAt(x, z);
+
+      const fox = await vegetationGenerator.generateFox(new THREE.Vector3(x, y, z));
+      if (fox) {
+        this.scene.add(fox);
+      }
+    }
   }
 
   private addTrees(): void {
@@ -160,11 +223,31 @@ export class Game {
   }
 
   public start(): void {
-    this.animate();
+    if (!this.isRunning) {
+      this.isRunning = true;
+      this.animate();
+    }
+  }
+
+  public pause(): void {
+    this.isRunning = false;
+    if (this.animationId !== null) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
+    }
+  }
+
+  public updateSettings(settings: GameSettings): void {
+    this.settings = settings;
+    if (this.player) {
+      this.player.updateSettings(settings);
+    }
   }
 
   private animate = (): void => {
-    requestAnimationFrame(this.animate);
+    if (!this.isRunning) return;
+
+    this.animationId = requestAnimationFrame(this.animate);
 
     const deltaTime = this.clock.getDelta();
 

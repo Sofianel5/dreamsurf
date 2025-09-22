@@ -14,6 +14,7 @@
     "vite": "^5.0.10"
   },
   "dependencies": {
-    "three": "^0.160.0"
+    "three": "^0.160.0",
+    "three-stdlib": "^2.36.0"
   }
 }
