@@ -7,7 +7,7 @@ import { Player } from '@/player/Player';
 import { Sky } from '@/environment/Sky';
 import { GameSettings } from '@/App';
 
-export class HillyGame {
+export class ProceduralGame {
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;

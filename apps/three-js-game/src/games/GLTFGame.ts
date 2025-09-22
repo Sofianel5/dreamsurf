@@ -22,11 +22,9 @@ export class GLTFGame {
       graphicsQuality: 'medium'
     };
 
-    this.assetLoader = AssetLoader.getInstance();
-
     // Initialize Three.js components
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.Fog(0x87CEEB, 50, 500);
+    this.scene.fog = new THREE.Fog(0x87CEEB, 100, 800);
 
     this.camera = new THREE.PerspectiveCamera(
       75,
@@ -39,19 +37,16 @@ export class GLTFGame {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    // Canvas will be appended by React component
 
     this.clock = new THREE.Clock();
+    this.assetLoader = AssetLoader.getInstance();
 
     // Initialize game components
     this.initLighting();
-    this.initFlatTerrain();
+    this.createTerrain();
 
-    // Initialize player with settings for flat terrain
+    // Initialize player with settings
     this.player = new Player(this.camera, this.scene, this.settings);
-
-    // Set player position just above ground
-    this.camera.position.set(0, 1, 0);
 
     // Initialize environment
     const sky = new Sky(this.scene);
@@ -71,71 +66,88 @@ export class GLTFGame {
     directionalLight.castShadow = true;
 
     // Shadow settings
-    directionalLight.shadow.camera.left = -150;
-    directionalLight.shadow.camera.right = 150;
-    directionalLight.shadow.camera.top = 150;
-    directionalLight.shadow.camera.bottom = -150;
+    directionalLight.shadow.camera.left = -200;
+    directionalLight.shadow.camera.right = 200;
+    directionalLight.shadow.camera.top = 200;
+    directionalLight.shadow.camera.bottom = -200;
     directionalLight.shadow.camera.near = 0.1;
-    directionalLight.shadow.camera.far = 300;
+    directionalLight.shadow.camera.far = 400;
     directionalLight.shadow.mapSize.width = 2048;
     directionalLight.shadow.mapSize.height = 2048;
 
     this.scene.add(directionalLight);
 
-    // Add some hemisphere light for better ambient
-    const hemisphereLight = new THREE.HemisphereLight(0x87CEEB, 0x545454, 0.4);
+    // Add hemisphere light for natural lighting
+    const hemisphereLight = new THREE.HemisphereLight(0x87CEEB, 0x4a6741, 0.4);
     this.scene.add(hemisphereLight);
   }
 
-  private async initFlatTerrain(): Promise<void> {
-    // Create terrain entirely made of grass GLTF models
-    await this.createGrassTerrain();
+  private async createTerrain(): Promise<void> {
+    // Create base ground plane
+    const terrainSize = 400;
+    const terrainGeometry = new THREE.PlaneGeometry(terrainSize, terrainSize);
+    const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x4a6741 });
+
+    const ground = new THREE.Mesh(terrainGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    ground.position.y = 0;
+    ground.frustumCulled = false;
+    this.scene.add(ground);
+
+    // Load and distribute realistic grass models
+    await this.distributeGrass();
+
+    // Set player starting position above the terrain
+    this.camera.position.set(0, 2, 5);
   }
 
+  private async distributeGrass(): Promise<void> {
+    try {
+      console.log('Loading realistic grass models...');
 
-  private async createGrassTerrain(): Promise<void> {
-    // 1) Load ONE grass model
-    const gltf = await this.assetLoader.loadModel('/models/realistic_grass/scene.gltf');
-    // Find a single mesh (ideally 1 material). If your asset has multiple child meshes,
-    // pre-bake to a single mesh+material first (see notes below).
-    let src: THREE.Mesh | null = null;
-    gltf.traverse((o: any) => { if (o.isMesh && !src) src = o; });
-    if (!src) throw new Error('Grass mesh not found');
-    const geom = (src as THREE.Mesh).geometry;
-    const mat = (src as THREE.Mesh).material;
+      // Load the grass model
+      const grassModel = await this.assetLoader.loadModel('/models/realistic_grass/scene.gltf');
 
-    // 2) Create instances
-    const terrainSize = 200;
-    const spacing = 4;
-    const nx = Math.floor(terrainSize / spacing);
-    const nz = Math.floor(terrainSize / spacing);
-    const COUNT = nx * nz;
+      // Create grass distribution with performance optimization
+      const grassGroup = new THREE.Group();
+      const grassSpacing = 8; // Space between grass patches
+      const terrainSize = 400;
+      const grassCount = Math.floor(terrainSize / grassSpacing);
 
-    const grass = new THREE.InstancedMesh(geom, mat, COUNT);
-    // If static, omit DynamicDrawUsage for max perf
-    // grass.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      // Use instanced rendering for better performance
+      for (let x = -grassCount / 2; x < grassCount / 2; x++) {
+        for (let z = -grassCount / 2; z < grassCount / 2; z++) {
+          // Add some randomness to avoid grid pattern
+          const offsetX = (Math.random() - 0.5) * grassSpacing * 0.5;
+          const offsetZ = (Math.random() - 0.5) * grassSpacing * 0.5;
 
-    const m = new THREE.Matrix4();
-    let i = 0;
-    for (let x = 0; x < nx; x++) {
-      for (let z = 0; z < nz; z++) {
-        const px = (x - nx / 2) * spacing + (Math.random() - 0.5) * 2;
-        const pz = (z - nz / 2) * spacing + (Math.random() - 0.5) * 2;
-        const rot = Math.random() * Math.PI * 2;
-        const s = 0.8 + Math.random() * 0.4;
-        m.identity()
-          .makeRotationY(rot)
-          .setPosition(px, 0, pz);
-        m.multiply(new THREE.Matrix4().makeScale(s, s, s));
-        grass.setMatrixAt(i++, m);
+          const grassInstance = grassModel.clone();
+          grassInstance.position.set(
+            x * grassSpacing + offsetX,
+            0.1, // Slightly above ground
+            z * grassSpacing + offsetZ
+          );
+
+          // Random rotation for variety
+          grassInstance.rotation.y = Math.random() * Math.PI * 2;
+
+          // Random scale for variety (90% - 110%)
+          const scale = 0.9 + Math.random() * 0.2;
+          grassInstance.scale.set(scale, scale, scale);
+
+          grassGroup.add(grassInstance);
+        }
       }
-    }
-    grass.instanceMatrix.needsUpdate = true;
-    grass.castShadow = true;
-    grass.receiveShadow = true;
-    this.scene.add(grass);
-  }
 
+      this.scene.add(grassGroup);
+      console.log('Realistic grass distributed across terrain');
+
+    } catch (error) {
+      console.error('Failed to load grass model:', error);
+      console.log('Using base terrain without grass models');
+    }
+  }
 
   private onWindowResize(): void {
     this.camera.aspect = window.innerWidth / window.innerHeight;

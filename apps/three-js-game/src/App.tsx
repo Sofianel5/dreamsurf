@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { HomeScreen } from '@/components/HomeScreen';
 import { GameScreen } from '@/components/GameScreen';
 import { SettingsScreen } from '@/components/SettingsScreen';
-import { HillyGame } from '@/games/HillyGame';
+import { ProceduralGame } from '@/games/ProceduralGame';
 import { GLTFGame } from '@/games/GLTFGame';
 import { MazeGame } from '@/games/MazeGame';
 import './App.css';
@@ -14,7 +14,7 @@ export interface GameSettings {
 }
 
 type Screen = 'home' | 'settings' | 'game';
-type GameType = 'hilly' | 'gltf' | 'maze' | null;
+type GameType = 'procedural' | 'gltf' | 'maze' | null;
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
@@ -26,13 +26,13 @@ export default function App() {
   });
 
   // Game instances
-  const [hillyGame, setHillyGame] = useState<HillyGame | null>(null);
+  const [proceduralGame, setProceduralGame] = useState<ProceduralGame | null>(null);
   const [gltfGame, setGltfGame] = useState<GLTFGame | null>(null);
   const [mazeGame, setMazeGame] = useState<MazeGame | null>(null);
 
   const startGame = (gameType: GameType) => {
     // Pause other games
-    if (hillyGame) hillyGame.pause();
+    if (proceduralGame) proceduralGame.pause();
     if (gltfGame) gltfGame.pause();
     if (mazeGame) mazeGame.pause();
 
@@ -40,14 +40,14 @@ export default function App() {
     setCurrentScreen('game');
 
     // Start the selected game
-    if (gameType === 'hilly') {
-      if (!hillyGame) {
-        const game = new HillyGame(settings);
-        setHillyGame(game);
+    if (gameType === 'procedural') {
+      if (!proceduralGame) {
+        const game = new ProceduralGame(settings);
+        setProceduralGame(game);
         setTimeout(() => game.start(), 100); // Allow React to render first
       } else {
-        hillyGame.updateSettings(settings);
-        setTimeout(() => hillyGame.start(), 100);
+        proceduralGame.updateSettings(settings);
+        setTimeout(() => proceduralGame.start(), 100);
       }
     } else if (gameType === 'gltf') {
       if (!gltfGame) {
@@ -72,7 +72,7 @@ export default function App() {
 
   const backToHome = () => {
     // Pause all games
-    if (hillyGame) hillyGame.pause();
+    if (proceduralGame) proceduralGame.pause();
     if (gltfGame) gltfGame.pause();
     if (mazeGame) mazeGame.pause();
 
@@ -88,8 +88,8 @@ export default function App() {
     setSettings(newSettings);
 
     // Update active game settings
-    if (currentGame === 'hilly' && hillyGame) {
-      hillyGame.updateSettings(newSettings);
+    if (currentGame === 'procedural' && proceduralGame) {
+      proceduralGame.updateSettings(newSettings);
     } else if (currentGame === 'gltf' && gltfGame) {
       gltfGame.updateSettings(newSettings);
     } else if (currentGame === 'maze' && mazeGame) {
@@ -118,7 +118,7 @@ export default function App() {
         <GameScreen
           onBack={backToHome}
           gameRenderer={
-            currentGame === 'hilly' ? hillyGame?.getRenderer() :
+            currentGame === 'procedural' ? proceduralGame?.getRenderer() :
             currentGame === 'gltf' ? gltfGame?.getRenderer() :
             currentGame === 'maze' ? mazeGame?.getRenderer() : undefined
           }
