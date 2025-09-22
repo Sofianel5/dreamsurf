@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GameSettings } from '@/ui/HomeScreen';
+import { GameSettings } from '@/App';
 
 export class Player {
   private camera: THREE.PerspectiveCamera;
