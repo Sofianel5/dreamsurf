@@ -1,2 +1,6 @@
 [workspace]
 members = ["apps/desktop"]
+exclude = [
+    "apps/game",
+    "apps/subfuse"
+]
