@@ -1,0 +1,11 @@
+Model Information:
+* title:	Maze
+* source:	https://sketchfab.com/3d-models/maze-b1b79eaa6aaf47ad84b7645f1b9c36dd
+* author:	victor.darras (https://sketchfab.com/victor.darras)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Maze" (https://sketchfab.com/3d-models/maze-b1b79eaa6aaf47ad84b7645f1b9c36dd) by victor.darras (https://sketchfab.com/victor.darras) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

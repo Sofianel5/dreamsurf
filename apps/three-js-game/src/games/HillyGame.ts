@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TerrainGenerator } from '@/terrain/TerrainGenerator';
+import { TerrainGenerator } from '@/objects/TerrainGenerator';
 import { HouseGenerator } from '@/objects/HouseGenerator';
 import { GLTFHouseGenerator } from '@/objects/GLTFHouseGenerator';
 import { VegetationGenerator } from '@/objects/VegetationGenerator';
@@ -7,7 +7,7 @@ import { Player } from '@/player/Player';
 import { Sky } from '@/environment/Sky';
 import { GameSettings } from '@/ui/HomeScreen';
 
-export class Game {
+export class HillyGame {
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
