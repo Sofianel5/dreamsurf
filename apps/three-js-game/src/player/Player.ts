@@ -85,18 +85,29 @@ export class Player {
     this.mouse.y = 0;
   }
 
+  private terrainMesh: THREE.Mesh | null = null;
+  private raycaster = new THREE.Raycaster();
+
+  public setTerrainMesh(mesh: THREE.Mesh): void {
+    this.terrainMesh = mesh;
+  }
+
   private getTerrainHeightAt(x: number, z: number): number {
-    // Calculate terrain height using the same formula as TerrainGenerator
-    const terrainSize = 200;
-    const fx = (x / terrainSize + 0.5);
-    const fz = (z / terrainSize + 0.5);
+    if (!this.terrainMesh) {
+      // Fallback to flat terrain if no terrain mesh is available
+      return 0;
+    }
 
-    const height =
-      Math.sin(fx * 8) * Math.sin(fz * 8) * 3 +
-      Math.sin(fx * 16) * Math.sin(fz * 16) * 1.5 +
-      Math.sin(fx * 4) * Math.sin(fz * 4) * 5;
+    // Use raycasting to find the terrain height at the given position
+    this.raycaster.set(new THREE.Vector3(x, 100, z), new THREE.Vector3(0, -1, 0));
+    const intersects = this.raycaster.intersectObject(this.terrainMesh, true);
 
-    return height;
+    if (intersects.length > 0) {
+      return intersects[0].point.y;
+    }
+
+    // Fallback to 0 if no intersection found
+    return 0;
   }
 
   public update(deltaTime: number): void {

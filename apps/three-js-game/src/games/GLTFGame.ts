@@ -102,11 +102,11 @@ export class GLTFGame {
 
   private setupTextures(): void {
     // Load noise texture for grass animation
-    this.textures.perlinNoise = this.textureLoader.load("/models/perlinnoise.webp");
+    this.textures.perlinNoise = this.textureLoader.load("/models/fluffy_grass/perlinnoise.webp");
     this.textures.perlinNoise.wrapS = this.textures.perlinNoise.wrapT = THREE.RepeatWrapping;
 
     // Load grass alpha texture
-    this.textures.grassAlpha = this.textureLoader.load("/models/grass.jpeg");
+    this.textures.grassAlpha = this.textureLoader.load("/models/fluffy_grass/grass.jpeg");
 
     // Setup grass material textures
     this.grassMaterial.setupTextures(
@@ -166,8 +166,8 @@ export class GLTFGame {
     });
 
     // Load island terrain
-    this.gltfLoader.load("/models/island.glb", (gltf) => {
-      let terrainMesh: THREE.Mesh;
+    this.gltfLoader.load("/models/fluffy_grass/island.glb", (gltf) => {
+      let terrainMesh: THREE.Mesh | null = null;
 
       gltf.scene.traverse((child) => {
         if (child instanceof THREE.Mesh) {
@@ -180,8 +180,13 @@ export class GLTFGame {
 
       this.scene.add(gltf.scene);
 
+      // Set terrain mesh for player collision
+      if (terrainMesh) {
+        this.player.setTerrainMesh(terrainMesh);
+      }
+
       // Load grass model and add grass to terrain
-      this.gltfLoader.load("/models/grassLODs.glb", (gltf) => {
+      this.gltfLoader.load("/models/fluffy_grass/grassLODs.glb", (gltf) => {
         gltf.scene.traverse((child) => {
           if (child instanceof THREE.Mesh) {
             if (child.name.includes("LOD00")) {
@@ -200,7 +205,7 @@ export class GLTFGame {
 
     // Load fluffy grass text
     const textMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
-    this.gltfLoader.load("/models/fluffy_grass_text.glb", (gltf) => {
+    this.gltfLoader.load("/models/fluffy_grass/fluffy_grass_text.glb", (gltf) => {
       gltf.scene.traverse((child) => {
         if (child instanceof THREE.Mesh) {
           child.material = textMaterial;
