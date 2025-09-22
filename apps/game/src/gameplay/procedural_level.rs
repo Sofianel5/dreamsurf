@@ -1,13 +1,11 @@
 //! Procedural level generation.
 
-use crate::{
-    audio::MusicPool,
-    screens::Screen,
-    gameplay::npc::NPC_RADIUS,
-};
+use crate::{audio::MusicPool, gameplay::npc::NPC_RADIUS, screens::Screen};
 use avian3d::prelude::*;
 use bevy::prelude::*;
-use bevy_landmass::{prelude::*};
+use bevy::render::mesh::{Indices, PrimitiveTopology};
+use bevy::render::render_asset::RenderAssetUsages;
+use bevy_landmass::prelude::*;
 use bevy_seedling::prelude::*;
 use bevy_seedling::sample::Sample;
 #[cfg(feature = "hot_patch")]
@@ -20,7 +18,11 @@ pub(super) fn plugin(app: &mut App) {
 
 /// A system that spawns a procedural level.
 #[cfg_attr(feature = "hot_patch", hot)]
-pub(crate) fn spawn_procedural_level(mut commands: Commands, assets: Res<ProceduralLevelAssets>) {
+pub(crate) fn spawn_procedural_level(
+    mut commands: Commands,
+    assets: Res<ProceduralLevelAssets>,
+    mut meshes: ResMut<Assets<Mesh>>,
+) {
     // Spawn level container
     commands.spawn((
         Name::new("Procedural Level"),
@@ -46,7 +48,7 @@ pub(crate) fn spawn_procedural_level(mut commands: Commands, assets: Res<Procedu
         .id();
 
     // Generate the ground plane
-    spawn_ground(&mut commands, &assets);
+    spawn_ground(&mut commands, &assets, &mut meshes);
 
     // Generate multiple houses in random locations
     spawn_multiple_houses(&mut commands, &assets);
@@ -56,7 +58,11 @@ pub(crate) fn spawn_procedural_level(mut commands: Commands, assets: Res<Procedu
 }
 
 #[cfg_attr(feature = "hot_patch", hot)]
-fn spawn_ground(commands: &mut Commands, assets: &ProceduralLevelAssets) {
+fn spawn_ground(
+    commands: &mut Commands,
+    assets: &ProceduralLevelAssets,
+    meshes: &mut Assets<Mesh>,
+) {
     // Generate hilly terrain using a heightfield collider
     let terrain_size = 200;
     let terrain_scale = 2.0;
@@ -69,27 +75,103 @@ fn spawn_ground(commands: &mut Commands, assets: &ProceduralLevelAssets) {
             let fz = z as f32 / terrain_size as f32;
 
             // Combine multiple sine waves for rolling hills
-            let height =
-                (fx * 8.0).sin() * (fz * 8.0).sin() * 3.0 +  // Main hills
+            let height = (fx * 8.0).sin() * (fz * 8.0).sin() * 3.0 +  // Main hills
                 (fx * 16.0).sin() * (fz * 16.0).sin() * 1.5 + // Smaller variations
-                (fx * 4.0).sin() * (fz * 4.0).sin() * 5.0;    // Large rolling hills
+                (fx * 4.0).sin() * (fz * 4.0).sin() * 5.0; // Large rolling hills
 
             heights[x][z] = height;
         }
     }
 
+    // Create a mesh from the height data
+    let terrain_mesh = create_terrain_mesh(&heights, terrain_size, terrain_scale);
+    let terrain_mesh_handle = meshes.add(terrain_mesh);
+
     commands.spawn((
         Name::new("Ground"),
-        Mesh3d(assets.ground_mesh.clone()),
+        Mesh3d(terrain_mesh_handle),
         MeshMaterial3d(assets.ground_material.clone()),
-        Transform::from_xyz(0.0, 0.0, 0.0).with_scale(Vec3::new(terrain_scale, 1.0, terrain_scale)),
+        Transform::from_xyz(0.0, 0.0, 0.0),
         RigidBody::Static,
         Collider::heightfield(
             heights,
-            Vec3::new(terrain_size as f32 * terrain_scale, 1.0, terrain_size as f32 * terrain_scale),
+            Vec3::new(
+                terrain_size as f32 * terrain_scale,
+                1.0,
+                terrain_size as f32 * terrain_scale,
+            ),
         ),
         StateScoped(Screen::ProceduralGameplay),
     ));
+}
+
+fn create_terrain_mesh(heights: &Vec<Vec<f32>>, terrain_size: usize, terrain_scale: f32) -> Mesh {
+    let num_vertices = terrain_size * terrain_size;
+    let mut positions = Vec::with_capacity(num_vertices);
+    let mut normals = vec![[0.0, 1.0, 0.0]; num_vertices];
+    let mut uvs = Vec::with_capacity(num_vertices);
+    let mut indices = Vec::with_capacity((terrain_size - 1) * (terrain_size - 1) * 6);
+
+    let total_width = terrain_size as f32 * terrain_scale;
+    let total_depth = terrain_size as f32 * terrain_scale;
+
+    let cell_width = total_width / (terrain_size - 1) as f32;
+    let cell_depth = total_depth / (terrain_size - 1) as f32;
+
+    for z in 0..terrain_size {
+        for x in 0..terrain_size {
+            let px = x as f32 * cell_width - total_width / 2.0;
+            let pz = z as f32 * cell_depth - total_depth / 2.0;
+            let py = heights[x][z];
+
+            positions.push([px, py, pz]);
+            uvs.push([
+                x as f32 / (terrain_size - 1) as f32,
+                z as f32 / (terrain_size - 1) as f32,
+            ]);
+        }
+    }
+
+    for z in 0..(terrain_size - 1) {
+        for x in 0..(terrain_size - 1) {
+            let top_left = (z * terrain_size + x) as u32;
+            let top_right = top_left + 1;
+            let bottom_left = top_left + terrain_size as u32;
+            let bottom_right = bottom_left + 1;
+
+            indices.push(top_left);
+            indices.push(bottom_left);
+            indices.push(top_right);
+
+            indices.push(top_right);
+            indices.push(bottom_left);
+            indices.push(bottom_right);
+        }
+    }
+
+    // Calculate normals
+    for z in 1..(terrain_size - 1) {
+        for x in 1..(terrain_size - 1) {
+            let h_l = heights[x - 1][z];
+            let h_r = heights[x + 1][z];
+            let h_d = heights[x][z - 1];
+            let h_u = heights[x][z + 1];
+
+            let normal = Vec3::new(h_l - h_r, 2.0 * cell_width, h_d - h_u).normalize_or(Vec3::Y);
+            normals[z * terrain_size + x] = normal.into();
+        }
+    }
+
+    let mut mesh = Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::default(),
+    );
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+    mesh.insert_indices(Indices::U32(indices));
+
+    mesh
 }
 
 #[cfg_attr(feature = "hot_patch", hot)]
@@ -100,13 +182,13 @@ fn spawn_multiple_houses(commands: &mut Commands, assets: &ProceduralLevelAssets
 
     // List of house positions (x, z coordinates)
     let house_positions = vec![
-        Vec2::new(0.0, 0.0),        // Center house
-        Vec2::new(40.0, 30.0),      // Northeast
-        Vec2::new(-45.0, -20.0),    // Southwest
-        Vec2::new(25.0, -40.0),     // Southeast
-        Vec2::new(-30.0, 35.0),     // Northwest
-        Vec2::new(60.0, -10.0),     // East
-        Vec2::new(-60.0, 5.0),      // West
+        Vec2::new(0.0, 0.0),     // Center house
+        Vec2::new(40.0, 30.0),   // Northeast
+        Vec2::new(-45.0, -20.0), // Southwest
+        Vec2::new(25.0, -40.0),  // Southeast
+        Vec2::new(-30.0, 35.0),  // Northwest
+        Vec2::new(60.0, -10.0),  // East
+        Vec2::new(-60.0, 5.0),   // West
     ];
 
     // Spawn a house at each position, calculating height from terrain
@@ -119,7 +201,12 @@ fn spawn_multiple_houses(commands: &mut Commands, assets: &ProceduralLevelAssets
 }
 
 #[cfg_attr(feature = "hot_patch", hot)]
-fn spawn_house_at_position(commands: &mut Commands, assets: &ProceduralLevelAssets, house_center: Vec3, house_id: usize) {
+fn spawn_house_at_position(
+    commands: &mut Commands,
+    assets: &ProceduralLevelAssets,
+    house_center: Vec3,
+    house_id: usize,
+) {
     // House dimensions
     let width = 20.0;
     let depth = 15.0;
@@ -128,24 +215,74 @@ fn spawn_house_at_position(commands: &mut Commands, assets: &ProceduralLevelAsse
     let door_width = 2.0;
 
     // Spawn all the visual walls (same as before)
-    spawn_house_walls(commands, assets, house_center, house_id, width, depth, height, wall_thickness, door_width);
+    spawn_house_walls(
+        commands,
+        assets,
+        house_center,
+        house_id,
+        width,
+        depth,
+        height,
+        wall_thickness,
+        door_width,
+    );
 
     // Single collision box for the entire house outline (hollow box)
     commands.spawn((
         Name::new(format!("House {} Collision", house_id)),
-        Transform::from_xyz(house_center.x, house_center.y + height/2.0, house_center.z),
+        Transform::from_xyz(
+            house_center.x,
+            house_center.y + height / 2.0,
+            house_center.z,
+        ),
         RigidBody::Static,
         Collider::compound(vec![
             // Front wall left
-            (Vec3::new(-width/2.0 + (width/2.0 - door_width/2.0)/2.0, 0.0, -depth/2.0), Quat::IDENTITY, Collider::cuboid((width/2.0 - door_width/2.0)/2.0, height/2.0, wall_thickness/2.0)),
+            (
+                Vec3::new(
+                    -width / 2.0 + (width / 2.0 - door_width / 2.0) / 2.0,
+                    0.0,
+                    -depth / 2.0,
+                ),
+                Quat::IDENTITY,
+                Collider::cuboid(
+                    (width / 2.0 - door_width / 2.0) / 2.0,
+                    height / 2.0,
+                    wall_thickness / 2.0,
+                ),
+            ),
             // Front wall right
-            (Vec3::new(width/2.0 - (width/2.0 - door_width/2.0)/2.0, 0.0, -depth/2.0), Quat::IDENTITY, Collider::cuboid((width/2.0 - door_width/2.0)/2.0, height/2.0, wall_thickness/2.0)),
+            (
+                Vec3::new(
+                    width / 2.0 - (width / 2.0 - door_width / 2.0) / 2.0,
+                    0.0,
+                    -depth / 2.0,
+                ),
+                Quat::IDENTITY,
+                Collider::cuboid(
+                    (width / 2.0 - door_width / 2.0) / 2.0,
+                    height / 2.0,
+                    wall_thickness / 2.0,
+                ),
+            ),
             // Back wall
-            (Vec3::new(0.0, 0.0, depth/2.0), Quat::IDENTITY, Collider::cuboid(width/2.0, height/2.0, wall_thickness/2.0)),
+            (
+                Vec3::new(0.0, 0.0, depth / 2.0),
+                Quat::IDENTITY,
+                Collider::cuboid(width / 2.0, height / 2.0, wall_thickness / 2.0),
+            ),
             // Left wall
-            (Vec3::new(-width/2.0, 0.0, 0.0), Quat::IDENTITY, Collider::cuboid(wall_thickness/2.0, height/2.0, depth/2.0)),
+            (
+                Vec3::new(-width / 2.0, 0.0, 0.0),
+                Quat::IDENTITY,
+                Collider::cuboid(wall_thickness / 2.0, height / 2.0, depth / 2.0),
+            ),
             // Right wall
-            (Vec3::new(width/2.0, 0.0, 0.0), Quat::IDENTITY, Collider::cuboid(wall_thickness/2.0, height/2.0, depth/2.0)),
+            (
+                Vec3::new(width / 2.0, 0.0, 0.0),
+                Quat::IDENTITY,
+                Collider::cuboid(wall_thickness / 2.0, height / 2.0, depth / 2.0),
+            ),
         ]),
         StateScoped(Screen::ProceduralGameplay),
     ));
@@ -158,8 +295,9 @@ fn spawn_house_at_position(commands: &mut Commands, assets: &ProceduralLevelAsse
         Transform::from_xyz(
             house_center.x,
             house_center.y + height + 0.5,
-            house_center.z
-        ).with_scale(Vec3::new(width + 2.0, 1.0, depth + 2.0)),
+            house_center.z,
+        )
+        .with_scale(Vec3::new(width + 2.0, 1.0, depth + 2.0)),
         RigidBody::Static,
         Collider::cuboid(0.5, 0.5, 0.5),
         StateScoped(Screen::ProceduralGameplay),
@@ -193,10 +331,9 @@ fn get_terrain_height_at(x: f32, z: f32) -> f32 {
     let fz = (z / (terrain_size * terrain_scale) + 0.5).clamp(0.0, 1.0);
 
     // Calculate height using the same formula as terrain generation
-    let height =
-        (fx * 8.0).sin() * (fz * 8.0).sin() * 3.0 +  // Main hills
+    let height = (fx * 8.0).sin() * (fz * 8.0).sin() * 3.0 +  // Main hills
         (fx * 16.0).sin() * (fz * 16.0).sin() * 1.5 + // Smaller variations
-        (fx * 4.0).sin() * (fz * 4.0).sin() * 5.0;    // Large rolling hills
+        (fx * 4.0).sin() * (fz * 4.0).sin() * 5.0; // Large rolling hills
 
     height
 }
@@ -208,8 +345,6 @@ pub(crate) struct ProceduralLevel;
 /// A [`Resource`] that contains all the assets needed to spawn the procedural level.
 #[derive(Resource, Asset, Clone, TypePath)]
 pub(crate) struct ProceduralLevelAssets {
-    #[dependency]
-    pub(crate) ground_mesh: Handle<Mesh>,
     #[dependency]
     pub(crate) wall_mesh: Handle<Mesh>,
     #[dependency]
@@ -238,24 +373,12 @@ impl FromWorld for ProceduralLevelAssets {
 
         // Load textures from darkmod assets (these exist in your project!)
         let grass_texture = assets.load("textures/darkmod/nature/dirt/dirt_002_dark.png");
-        let stone_texture = assets.load("textures/darkmod/stone/cobblestones/blocks_uneven_blue.png");
+        let stone_texture =
+            assets.load("textures/darkmod/stone/cobblestones/blocks_uneven_blue.png");
         let wood_texture = assets.load("textures/darkmod/wood/boards/weathered.png");
 
         // Create procedural meshes with UV coordinates
         let mut meshes = world.resource_mut::<Assets<Mesh>>();
-
-        // Very large ground plane with tiling UVs
-        let mut ground_mesh = Plane3d::default().mesh().size(2000.0, 2000.0).build();
-        // Scale UVs for tiling (200x200 tiles across the very large ground)
-        if let Some(uvs) = ground_mesh.attribute_mut(Mesh::ATTRIBUTE_UV_0) {
-            if let bevy::render::mesh::VertexAttributeValues::Float32x2(uv_values) = uvs {
-                for uv in uv_values.iter_mut() {
-                    uv[0] *= 200.0; // Tile 200 times in U
-                    uv[1] *= 200.0; // Tile 200 times in V
-                }
-            }
-        }
-        let ground_mesh = meshes.add(ground_mesh);
 
         let wall_mesh = meshes.add(Cuboid::default());
         let roof_mesh = meshes.add(Cuboid::default());
@@ -286,7 +409,6 @@ impl FromWorld for ProceduralLevelAssets {
         });
 
         Self {
-            ground_mesh,
             wall_mesh,
             roof_mesh,
             ground_material,
@@ -299,17 +421,32 @@ impl FromWorld for ProceduralLevelAssets {
     }
 }
 
-fn spawn_house_walls(commands: &mut Commands, assets: &ProceduralLevelAssets, house_center: Vec3, house_id: usize, width: f32, depth: f32, height: f32, wall_thickness: f32, door_width: f32) {
+fn spawn_house_walls(
+    commands: &mut Commands,
+    assets: &ProceduralLevelAssets,
+    house_center: Vec3,
+    house_id: usize,
+    width: f32,
+    depth: f32,
+    height: f32,
+    wall_thickness: f32,
+    door_width: f32,
+) {
     // Front wall (with door opening) - Left part
     commands.spawn((
         Name::new(format!("House {} Front Wall Left", house_id)),
         Mesh3d(assets.wall_mesh.clone()),
         MeshMaterial3d(assets.wall_material.clone()),
         Transform::from_xyz(
-            house_center.x - width/2.0 + (width/2.0 - door_width/2.0)/2.0,
-            house_center.y + height/2.0,
-            house_center.z - depth/2.0
-        ).with_scale(Vec3::new(width/2.0 - door_width/2.0, height, wall_thickness)),
+            house_center.x - width / 2.0 + (width / 2.0 - door_width / 2.0) / 2.0,
+            house_center.y + height / 2.0,
+            house_center.z - depth / 2.0,
+        )
+        .with_scale(Vec3::new(
+            width / 2.0 - door_width / 2.0,
+            height,
+            wall_thickness,
+        )),
         StateScoped(Screen::ProceduralGameplay),
     ));
 
@@ -319,10 +456,15 @@ fn spawn_house_walls(commands: &mut Commands, assets: &ProceduralLevelAssets, ho
         Mesh3d(assets.wall_mesh.clone()),
         MeshMaterial3d(assets.wall_material.clone()),
         Transform::from_xyz(
-            house_center.x + width/2.0 - (width/2.0 - door_width/2.0)/2.0,
-            house_center.y + height/2.0,
-            house_center.z - depth/2.0
-        ).with_scale(Vec3::new(width/2.0 - door_width/2.0, height, wall_thickness)),
+            house_center.x + width / 2.0 - (width / 2.0 - door_width / 2.0) / 2.0,
+            house_center.y + height / 2.0,
+            house_center.z - depth / 2.0,
+        )
+        .with_scale(Vec3::new(
+            width / 2.0 - door_width / 2.0,
+            height,
+            wall_thickness,
+        )),
         StateScoped(Screen::ProceduralGameplay),
     ));
 
@@ -333,9 +475,10 @@ fn spawn_house_walls(commands: &mut Commands, assets: &ProceduralLevelAssets, ho
         MeshMaterial3d(assets.wall_material.clone()),
         Transform::from_xyz(
             house_center.x,
-            house_center.y + height/2.0,
-            house_center.z + depth/2.0
-        ).with_scale(Vec3::new(width, height, wall_thickness)),
+            house_center.y + height / 2.0,
+            house_center.z + depth / 2.0,
+        )
+        .with_scale(Vec3::new(width, height, wall_thickness)),
         StateScoped(Screen::ProceduralGameplay),
     ));
 
@@ -345,10 +488,11 @@ fn spawn_house_walls(commands: &mut Commands, assets: &ProceduralLevelAssets, ho
         Mesh3d(assets.wall_mesh.clone()),
         MeshMaterial3d(assets.wall_material.clone()),
         Transform::from_xyz(
-            house_center.x - width/2.0,
-            house_center.y + height/2.0,
-            house_center.z
-        ).with_scale(Vec3::new(wall_thickness, height, depth)),
+            house_center.x - width / 2.0,
+            house_center.y + height / 2.0,
+            house_center.z,
+        )
+        .with_scale(Vec3::new(wall_thickness, height, depth)),
         StateScoped(Screen::ProceduralGameplay),
     ));
 
@@ -358,10 +502,11 @@ fn spawn_house_walls(commands: &mut Commands, assets: &ProceduralLevelAssets, ho
         Mesh3d(assets.wall_mesh.clone()),
         MeshMaterial3d(assets.wall_material.clone()),
         Transform::from_xyz(
-            house_center.x + width/2.0,
-            house_center.y + height/2.0,
-            house_center.z
-        ).with_scale(Vec3::new(wall_thickness, height, depth)),
+            house_center.x + width / 2.0,
+            house_center.y + height / 2.0,
+            house_center.z,
+        )
+        .with_scale(Vec3::new(wall_thickness, height, depth)),
         StateScoped(Screen::ProceduralGameplay),
     ));
 }
