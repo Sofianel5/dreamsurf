@@ -1,0 +1,11 @@
+Model Information:
+* title:	Backrooms Level 0
+* source:	https://sketchfab.com/3d-models/backrooms-level-0-3a43c43be8864c09aa0dff37c0b82001
+* author:	TheFungus (https://sketchfab.com/TheFoognus)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Backrooms Level 0" (https://sketchfab.com/3d-models/backrooms-level-0-3a43c43be8864c09aa0dff37c0b82001) by TheFungus (https://sketchfab.com/TheFoognus) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
