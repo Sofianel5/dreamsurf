@@ -1,7 +1,6 @@
 import * as THREE from 'three';
-import { AssetLoader } from '@/loaders/AssetLoader';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { Player } from '@/player/Player';
-import { Sky } from '@/environment/Sky';
 import { GameSettings } from '@/App';
 
 export class MazeGame {
@@ -13,21 +12,21 @@ export class MazeGame {
   private isRunning: boolean = false;
   private animationId: number | null = null;
   private settings: GameSettings;
-  private assetLoader: AssetLoader;
+  private wallObjects: THREE.Mesh[] = [];
+  private gltfLoader: GLTFLoader;
   private maze: THREE.Group | null = null;
 
   constructor(settings?: GameSettings) {
     this.settings = settings || {
-      moveSpeed: 800, // Slightly slower for maze navigation
+      moveSpeed: 800,
       mouseSensitivity: 0.002,
       graphicsQuality: 'medium'
     };
 
-    this.assetLoader = AssetLoader.getInstance();
-
     // Initialize Three.js components
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.Fog(0x222222, 10, 100); // Darker fog for maze atmosphere
+    this.scene.background = new THREE.Color("#eeeeee");
+    this.scene.fog = new THREE.FogExp2("#eeeeee", 0.02);
 
     this.camera = new THREE.PerspectiveCamera(
       75,
@@ -36,158 +35,124 @@ export class MazeGame {
       1000
     );
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: true,
+      precision: "highp"
+    });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.autoUpdate = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    // Canvas will be appended by React component
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.scene.frustumCulled = true;
 
     this.clock = new THREE.Clock();
 
-    // Initialize game components
-    this.initLighting();
-    this.loadMaze();
+    // Initialize GLTF loader
+    this.gltfLoader = new GLTFLoader();
 
-    // Initialize player with settings
+    // Initialize player first
     this.player = new Player(this.camera, this.scene, this.settings);
 
-    // Initialize environment with darker sky for maze atmosphere
-    const sky = new Sky(this.scene);
+    // Create flat ground and set up terrain
+    this.createFlatGround();
+
+    // Load the GLTF maze
+    this.loadMaze();
 
     // Handle window resize
     window.addEventListener('resize', () => this.onWindowResize());
   }
 
-  private initLighting(): void {
-    // Dimmer ambient light for maze atmosphere
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+  private createFlatGround(): void {
+    // Create a simple flat ground plane
+    const groundGeometry = new THREE.PlaneGeometry(100, 100);
+    const groundMaterial = new THREE.MeshLambertMaterial({
+      color: 0x4a7c59 // Green ground
+    });
+
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2; // Rotate to be horizontal
+    ground.position.y = 0; // Ground level
+    ground.receiveShadow = true;
+    ground.name = 'ground'; // Name it so we can find it later
+
+    this.scene.add(ground);
+
+    // Add lighting like GLTFGame
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     this.scene.add(ambientLight);
 
-    // Main directional light
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(0, 50, 0);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+    directionalLight.position.set(100, 100, 100);
     directionalLight.castShadow = true;
 
-    // Shadow settings for maze
+    // Shadow settings like GLTFGame
+    directionalLight.shadow.camera.far = 200;
     directionalLight.shadow.camera.left = -50;
     directionalLight.shadow.camera.right = 50;
     directionalLight.shadow.camera.top = 50;
     directionalLight.shadow.camera.bottom = -50;
-    directionalLight.shadow.camera.near = 0.1;
-    directionalLight.shadow.camera.far = 200;
-    directionalLight.shadow.mapSize.width = 2048;
-    directionalLight.shadow.mapSize.height = 2048;
+    directionalLight.shadow.mapSize.set(2048, 2048);
 
     this.scene.add(directionalLight);
 
-    // Add point lights at key locations for atmosphere
-    const pointLight1 = new THREE.PointLight(0xffaa00, 0.5, 20);
-    pointLight1.position.set(10, 5, 10);
-    pointLight1.castShadow = true;
-    this.scene.add(pointLight1);
+    // Set terrain for player collision
+    this.player.setTerrainMesh(ground);
 
-    const pointLight2 = new THREE.PointLight(0xffaa00, 0.5, 20);
-    pointLight2.position.set(-10, 5, -10);
-    pointLight2.castShadow = true;
-    this.scene.add(pointLight2);
+    console.log('Ground set for player collision');
 
-    // Hemisphere light for subtle fill
-    const hemisphereLight = new THREE.HemisphereLight(0x87CEEB, 0x2c2c2c, 0.2);
-    this.scene.add(hemisphereLight);
+    console.log('Flat ground created');
   }
 
-  private async loadMaze(): Promise<void> {
-    try {
-      console.log('Loading maze model...');
-      this.maze = await this.assetLoader.loadModel('/models/maze/scene.gltf');
+  private loadMaze(): void {
+    // Create maze material like GLTFGame does for terrain
+    const mazeMaterial = new THREE.MeshPhongMaterial({
+      color: "#5e875e"
+    });
 
-      // Position and scale the maze appropriately
-      this.maze.position.set(0, 0, 0);
+    // Load maze using GLTFLoader like GLTFGame does
+    this.gltfLoader.load('/models/maze/scene.gltf', (gltf) => {
+      console.log('GLTF maze loaded successfully');
 
-      // Scale the maze to appropriate size
-      const scale = 5; // Adjust this value based on the maze model size
-      this.maze.scale.set(scale, scale, scale);
+      this.maze = gltf.scene;
 
-      // Ensure all maze parts cast and receive shadows
+      // Position and scale the maze properly on the ground
+      this.maze.position.set(0, 0, 0); // Place directly on ground
+      this.maze.scale.set(5, 5, 5); // Scale the entire maze
+
+      // Extract wall meshes for collision detection
+      this.wallObjects = [];
       this.maze.traverse((child) => {
         if (child instanceof THREE.Mesh) {
-          child.castShadow = true;
+          child.material = mazeMaterial;
           child.receiveShadow = true;
+          child.castShadow = true;
+          // Don't scale individual geometries - scale the whole maze instead
 
-          // Ensure materials are visible and have proper properties
-          if (child.material) {
-            const material = child.material as THREE.Material;
-            material.side = THREE.FrontSide;
-          }
+          // Add all mesh objects as potential walls for collision
+          this.wallObjects.push(child);
         }
       });
 
       this.scene.add(this.maze);
-      console.log('Maze loaded successfully');
 
-      // Position player at maze entrance or center
-      this.positionPlayerAtStart();
+      // Set up wall collision for player
+      this.player.setMazeWalls(this.wallObjects);
 
-    } catch (error) {
-      console.error('Failed to load maze model:', error);
+      // Position player at maze entrance after loading
+      this.camera.position.set(0, 2, 20); // Start outside the maze looking in
 
-      // Create a simple procedural maze as fallback
-      this.createFallbackMaze();
-    }
+      console.log('GLTF maze loaded with', this.wallObjects.length, 'collision objects');
+
+    }, undefined, (error) => {
+      console.error('Failed to load GLTF maze:', error);
+    });
   }
 
-  private positionPlayerAtStart(): void {
-    // Position player at a good starting point in the maze
-    // You may need to adjust these coordinates based on your specific maze model
-    this.camera.position.set(0, 2, 20); // Start at the edge of the maze
-  }
-
-  private createFallbackMaze(): void {
-    // Create a simple procedural maze as fallback if GLTF loading fails
-    const mazeGroup = new THREE.Group();
-
-    const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x666666 });
-    const wallGeometry = new THREE.BoxGeometry(2, 4, 2);
-
-    // Create a simple maze pattern
-    const mazePattern = [
-      [1,1,1,1,1,1,1,1,1,1],
-      [1,0,0,0,1,0,0,0,0,1],
-      [1,0,1,0,1,0,1,1,0,1],
-      [1,0,1,0,0,0,1,0,0,1],
-      [1,0,1,1,1,0,1,0,1,1],
-      [1,0,0,0,0,0,0,0,0,1],
-      [1,1,1,0,1,1,1,1,0,1],
-      [1,0,0,0,1,0,0,0,0,1],
-      [1,0,1,0,0,0,1,0,1,1],
-      [1,1,1,1,1,1,1,1,1,1]
-    ];
-
-    for (let row = 0; row < mazePattern.length; row++) {
-      for (let col = 0; col < mazePattern[row].length; col++) {
-        if (mazePattern[row][col] === 1) {
-          const wall = new THREE.Mesh(wallGeometry, wallMaterial);
-          wall.position.set(col * 2 - 9, 2, row * 2 - 9);
-          wall.castShadow = true;
-          wall.receiveShadow = true;
-          mazeGroup.add(wall);
-        }
-      }
-    }
-
-    // Add floor
-    const floorGeometry = new THREE.PlaneGeometry(20, 20);
-    const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
-    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-    floor.rotation.x = -Math.PI / 2;
-    floor.receiveShadow = true;
-    mazeGroup.add(floor);
-
-    this.scene.add(mazeGroup);
-    this.maze = mazeGroup;
-
-    console.log('Fallback maze created');
-  }
 
   private onWindowResize(): void {
     this.camera.aspect = window.innerWidth / window.innerHeight;

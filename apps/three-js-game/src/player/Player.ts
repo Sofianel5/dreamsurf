@@ -25,8 +25,8 @@ export class Player {
       this.updateSettings(settings);
     }
 
-    // Set initial position
-    this.camera.position.set(-30, 10, 0);
+    // Set initial position for flat terrain - may be overridden by game-specific positioning
+    this.camera.position.set(0, 2, 0);
 
     this.initControls();
   }
@@ -87,9 +87,14 @@ export class Player {
 
   private terrainMesh: THREE.Mesh | null = null;
   private raycaster = new THREE.Raycaster();
+  private wallObjects: THREE.Mesh[] = [];
 
   public setTerrainMesh(mesh: THREE.Mesh): void {
     this.terrainMesh = mesh;
+  }
+
+  public setMazeWalls(walls: THREE.Mesh[]): void {
+    this.wallObjects = walls;
   }
 
   private getTerrainHeightAt(x: number, z: number): number {
@@ -108,6 +113,29 @@ export class Player {
 
     // Fallback to 0 if no intersection found
     return 0;
+  }
+
+  private checkWallCollision(newPosition: THREE.Vector3): boolean {
+    if (this.wallObjects.length === 0) return false;
+
+    const playerRadius = 1; // Player collision radius
+    const playerHeight = 2; // Player height
+
+    // Check collision with each wall
+    for (const wall of this.wallObjects) {
+      // Get wall bounding box
+      const box = new THREE.Box3().setFromObject(wall);
+
+      // Expand the box by player radius for collision detection
+      box.expandByScalar(playerRadius);
+
+      // Check if player position intersects with expanded wall box
+      if (box.containsPoint(new THREE.Vector3(newPosition.x, newPosition.y, newPosition.z))) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   public update(deltaTime: number): void {
@@ -151,12 +179,31 @@ export class Player {
       this.direction.copy(moveDirection);
     }
 
-    // Apply movement
+    // Apply movement with wall collision detection
     const moveVector = this.direction.clone().multiplyScalar(this.moveSpeed * deltaTime);
     moveVector.y = 0; // Don't apply movement in Y direction
 
-    this.velocity.x = moveVector.x;
-    this.velocity.z = moveVector.z;
+    // Store current position and calculate new position
+    const currentPosition = this.camera.position.clone();
+    const newPosition = currentPosition.clone();
+
+    // Test X movement
+    newPosition.x += moveVector.x;
+    if (!this.checkWallCollision(newPosition)) {
+      this.velocity.x = moveVector.x;
+    } else {
+      this.velocity.x = 0;
+      newPosition.x = currentPosition.x; // Reset X position
+    }
+
+    // Test Z movement
+    newPosition.z += moveVector.z;
+    if (!this.checkWallCollision(newPosition)) {
+      this.velocity.z = moveVector.z;
+    } else {
+      this.velocity.z = 0;
+      newPosition.z = currentPosition.z; // Reset Z position
+    }
 
     // Handle jumping
     if ((this.keys['Space'] || this.keys['KeySpace']) && this.isGrounded) {

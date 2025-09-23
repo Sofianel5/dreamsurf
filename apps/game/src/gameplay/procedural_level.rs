@@ -115,6 +115,9 @@ fn create_terrain_mesh(heights: &Vec<Vec<f32>>, terrain_size: usize, terrain_sca
     let cell_width = total_width / (terrain_size - 1) as f32;
     let cell_depth = total_depth / (terrain_size - 1) as f32;
 
+    // Tiling factor - how many times the texture repeats across the terrain
+    let texture_tile_factor = 20.0; // Texture will repeat 20 times across the terrain
+
     for z in 0..terrain_size {
         for x in 0..terrain_size {
             let px = x as f32 * cell_width - total_width / 2.0;
@@ -122,9 +125,10 @@ fn create_terrain_mesh(heights: &Vec<Vec<f32>>, terrain_size: usize, terrain_sca
             let py = heights[x][z];
 
             positions.push([px, py, pz]);
+            // Tile the texture by multiplying UV coordinates
             uvs.push([
-                x as f32 / (terrain_size - 1) as f32,
-                z as f32 / (terrain_size - 1) as f32,
+                (x as f32 / (terrain_size - 1) as f32) * texture_tile_factor,
+                (z as f32 / (terrain_size - 1) as f32) * texture_tile_factor,
             ]);
         }
     }
