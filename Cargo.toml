@@ -1,5 +1,5 @@
 [workspace]
-members = ["apps/desktop"]
+members = ["apps/desktop", "crates/generative"]
 exclude = [
     "apps/game",
     "apps/subfuse"

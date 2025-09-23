@@ -20,7 +20,7 @@ fn spawn_main_menu(mut commands: Commands) {
         #[cfg(not(target_family = "wasm"))]
         children![
             widget::button("Play Volta", enter_loading_screen),
-            widget::button("Play Procedural", enter_procedural_loading_screen),
+            widget::button("Generate World", open_generate_menu),
             widget::button("Settings", open_settings_menu),
             widget::button("Credits", open_credits_menu),
             widget::button("Exit", exit_app),
@@ -28,7 +28,7 @@ fn spawn_main_menu(mut commands: Commands) {
         #[cfg(target_family = "wasm")]
         children![
             widget::button("Play Volta", enter_loading_screen),
-            widget::button("Play Procedural", enter_procedural_loading_screen),
+            widget::button("Generate World", open_generate_menu),
             widget::button("Settings", open_settings_menu),
             widget::button("Credits", open_credits_menu),
         ],
@@ -44,13 +44,8 @@ fn enter_loading_screen(
     window.cursor_options.grab_mode = CursorGrabMode::Locked;
 }
 
-fn enter_procedural_loading_screen(
-    _trigger: Trigger<Pointer<Click>>,
-    mut next_screen: ResMut<NextState<Screen>>,
-    mut window: Single<&mut Window>,
-) {
-    next_screen.set(Screen::ProceduralLoading);
-    window.cursor_options.grab_mode = CursorGrabMode::Locked;
+fn open_generate_menu(_: Trigger<Pointer<Click>>, mut next_menu: ResMut<NextState<Menu>>) {
+    next_menu.set(Menu::Generate);
 }
 
 fn open_settings_menu(_: Trigger<Pointer<Click>>, mut next_menu: ResMut<NextState<Menu>>) {

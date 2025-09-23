@@ -8,6 +8,7 @@ mod audio;
 mod dev_tools;
 mod fixed_update_inspection;
 mod gameplay;
+mod generate;
 mod hdr;
 mod menus;
 mod props;
@@ -18,7 +19,7 @@ mod third_party;
 mod ui_camera;
 
 use asset_processing::default_image_sampler_descriptor;
-use bevy::ecs::error::{GLOBAL_ERROR_HANDLER, error};
+use bevy::ecs::error::{error, GLOBAL_ERROR_HANDLER};
 use bevy::pbr::DefaultOpaqueRendererMethod;
 use bevy_landmass::LandmassSystemSet;
 use bevy_mod_skinned_aabb::SkinnedAabbPlugin;
