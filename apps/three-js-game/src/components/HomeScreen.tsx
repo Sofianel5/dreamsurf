@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface HomeScreenProps {
-  onStartGame: (gameType: 'procedural' | 'gltf' | 'maze') => void;
+  onStartGame: (gameType: 'procedural' | 'gltf' | 'maze' | 'backrooms') => void;
   onShowSettings: () => void;
 }
 
@@ -17,6 +17,9 @@ export function HomeScreen({ onStartGame, onShowSettings }: HomeScreenProps) {
       </button>
       <button className="menu-button" onClick={() => onStartGame('maze')}>
         Play Maze
+      </button>
+      <button className="menu-button" onClick={() => onStartGame('backrooms')}>
+        Play Backrooms
       </button>
       <button className="menu-button" onClick={onShowSettings}>
         Settings

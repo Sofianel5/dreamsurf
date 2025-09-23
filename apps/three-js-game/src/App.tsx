@@ -5,6 +5,7 @@ import { SettingsScreen } from '@/components/SettingsScreen';
 import { ProceduralGame } from '@/games/ProceduralGame';
 import { GLTFGame } from '@/games/GLTFGame';
 import { MazeGame } from '@/games/MazeGame';
+import { BackroomsGame } from '@/games/BackroomsGame';
 import './App.css';
 
 export interface GameSettings {
@@ -14,7 +15,7 @@ export interface GameSettings {
 }
 
 type Screen = 'home' | 'settings' | 'game';
-type GameType = 'procedural' | 'gltf' | 'maze' | null;
+type GameType = 'procedural' | 'gltf' | 'maze' | 'backrooms' | null;
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
@@ -29,12 +30,14 @@ export default function App() {
   const [proceduralGame, setProceduralGame] = useState<ProceduralGame | null>(null);
   const [gltfGame, setGltfGame] = useState<GLTFGame | null>(null);
   const [mazeGame, setMazeGame] = useState<MazeGame | null>(null);
+  const [backroomsGame, setBackroomsGame] = useState<BackroomsGame | null>(null);
 
   const startGame = (gameType: GameType) => {
     // Pause other games
     if (proceduralGame) proceduralGame.pause();
     if (gltfGame) gltfGame.pause();
     if (mazeGame) mazeGame.pause();
+    if (backroomsGame) backroomsGame.pause();
 
     setCurrentGame(gameType);
     setCurrentScreen('game');
@@ -67,6 +70,15 @@ export default function App() {
         mazeGame.updateSettings(settings);
         setTimeout(() => mazeGame.start(), 100);
       }
+    } else if (gameType === 'backrooms') {
+      if (!backroomsGame) {
+        const game = new BackroomsGame(settings);
+        setBackroomsGame(game);
+        setTimeout(() => game.start(), 100);
+      } else {
+        backroomsGame.updateSettings(settings);
+        setTimeout(() => backroomsGame.start(), 100);
+      }
     }
   };
 
@@ -75,6 +87,7 @@ export default function App() {
     if (proceduralGame) proceduralGame.pause();
     if (gltfGame) gltfGame.pause();
     if (mazeGame) mazeGame.pause();
+    if (backroomsGame) backroomsGame.pause();
 
     setCurrentGame(null);
     setCurrentScreen('home');
@@ -94,6 +107,8 @@ export default function App() {
       gltfGame.updateSettings(newSettings);
     } else if (currentGame === 'maze' && mazeGame) {
       mazeGame.updateSettings(newSettings);
+    } else if (currentGame === 'backrooms' && backroomsGame) {
+      backroomsGame.updateSettings(newSettings);
     }
   };
 
@@ -120,7 +135,8 @@ export default function App() {
           gameRenderer={
             currentGame === 'procedural' ? proceduralGame?.getRenderer() :
             currentGame === 'gltf' ? gltfGame?.getRenderer() :
-            currentGame === 'maze' ? mazeGame?.getRenderer() : undefined
+            currentGame === 'maze' ? mazeGame?.getRenderer() :
+            currentGame === 'backrooms' ? backroomsGame?.getRenderer() : undefined
           }
         />
       )}

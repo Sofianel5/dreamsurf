@@ -60,6 +60,9 @@ export class MazeGame {
     // Create flat ground and set up terrain
     this.createFlatGround();
 
+    // Set spawn position immediately after ground creation
+    this.camera.position.set(0, 2, 20);
+
     // Load the GLTF maze
     this.loadMaze();
 
@@ -68,15 +71,16 @@ export class MazeGame {
   }
 
   private createFlatGround(): void {
-    // Create a simple flat ground plane
-    const groundGeometry = new THREE.PlaneGeometry(100, 100);
+    // Create a reasonably sized ground plane
+    const groundGeometry = new THREE.PlaneGeometry(200, 200);
     const groundMaterial = new THREE.MeshLambertMaterial({
-      color: 0x4a7c59 // Green ground
+      color: 0x4a7c59, // Green ground
+      side: THREE.DoubleSide // Fix single-sided collision issues
     });
 
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2; // Rotate to be horizontal
-    ground.position.y = 0; // Ground level
+    ground.position.y = -0.001; // Nudge down slightly to avoid exact y=0 issues
     ground.receiveShadow = true;
     ground.name = 'ground'; // Name it so we can find it later
 
@@ -120,31 +124,30 @@ export class MazeGame {
 
       this.maze = gltf.scene;
 
-      // Position and scale the maze properly on the ground
-      this.maze.position.set(0, 0, 0); // Place directly on ground
-      this.maze.scale.set(5, 5, 5); // Scale the entire maze
-
-      // Extract wall meshes for collision detection
+      // Extract wall meshes for collision detection BEFORE scaling
       this.wallObjects = [];
       this.maze.traverse((child) => {
         if (child instanceof THREE.Mesh) {
           child.material = mazeMaterial;
           child.receiveShadow = true;
           child.castShadow = true;
-          // Don't scale individual geometries - scale the whole maze instead
+          // Scale individual geometries like GLTFGame does
+          child.geometry.scale(5, 5, 5);
 
-          // Add all mesh objects as potential walls for collision
+          // Add mesh objects for collision
           this.wallObjects.push(child);
         }
       });
+
+      // Position the maze on the ground (no group scaling)
+      this.maze.position.set(0, 0, 0);
 
       this.scene.add(this.maze);
 
       // Set up wall collision for player
       this.player.setMazeWalls(this.wallObjects);
 
-      // Position player at maze entrance after loading
-      this.camera.position.set(0, 2, 20); // Start outside the maze looking in
+      // Camera position already set in constructor
 
       console.log('GLTF maze loaded with', this.wallObjects.length, 'collision objects');
 
@@ -163,6 +166,16 @@ export class MazeGame {
   public start(): void {
     if (!this.isRunning) {
       this.isRunning = true;
+
+      // Ensure the renderer canvas can receive focus for keyboard events
+      this.renderer.domElement.setAttribute('tabindex', '0');
+      this.renderer.domElement.focus();
+
+      // Add click listener for pointer lock
+      this.renderer.domElement.addEventListener('click', () => {
+        document.body.requestPointerLock();
+      });
+
       this.animate();
     }
   }
