@@ -1,0 +1,9 @@
+[package]
+name = "generative"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+async-openai = "0.29.3"
+async-trait = "0.1"
+thiserror = "1.0"
