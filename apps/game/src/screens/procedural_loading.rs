@@ -49,38 +49,21 @@ fn advance_to_procedural_gameplay_screen(
             next_menu.set(Menu::Main);
         }
         GroundGenerationStatus::Succeeded { material, texture, .. } => {
-            // Wait for procedural assets to be loaded
-            if let Some(assets) = procedural_assets {
-                let music_state = asset_server.get_load_state(assets.music.id());
-                let env_specular_state = asset_server.get_load_state(assets.env_map_specular.id());
-                let env_diffuse_state = asset_server.get_load_state(assets.env_map_diffuse.id());
-                let material_state = asset_server.get_load_state(material.id());
-                let texture_state = asset_server.get_load_state(texture.id());
+            // Simple check: just wait for the generated texture to be ready
+            let texture_state = asset_server.get_load_state(texture.id());
 
-                let states = [
-                    music_state,
-                    env_specular_state,
-                    env_diffuse_state,
-                    material_state,
-                    texture_state,
-                ];
-
-                if states
-                    .iter()
-                    .any(|state| matches!(state, Some(LoadState::Failed(_))))
-                {
+            match texture_state {
+                Some(LoadState::Failed(_)) => {
                     error!("generated texture failed to load");
                     next_screen.set(Screen::Title);
                     next_menu.set(Menu::Main);
-                    return;
                 }
-
-                let all_loaded = states
-                    .iter()
-                    .all(|state| matches!(state, Some(LoadState::Loaded)) || state.is_none());
-
-                if all_loaded {
+                Some(LoadState::Loaded) => {
+                    info!("Generated texture loaded, transitioning to gameplay");
                     next_screen.set(Screen::ProceduralGameplay);
+                }
+                _ => {
+                    // Still loading, wait
                 }
             }
         }
