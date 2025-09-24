@@ -231,27 +231,16 @@ impl FromWorld for ProceduralLevelAssets {
         // Get immutable reference to assets first
         let assets = world.resource::<AssetServer>();
         let music = assets.load("audio/music/Ambiance_Rain_Calm_Loop_Stereo.ogg");
-        let env_map_specular = assets.load("cubemaps/NightSkyHDRI001_4K-HDR_specular.ktx2");
-        let env_map_diffuse = assets.load("cubemaps/NightSkyHDRI001_4K-HDR_diffuse.ktx2");
 
-        // Load textures from darkmod assets (these exist in your project!)
-        let grass_texture = assets.load("textures/darkmod/nature/dirt/dirt_002_dark.png");
-
-        // Create materials with textures
+        // Create placeholder material/handles until procedural generation completes
         let mut materials = world.resource_mut::<Assets<StandardMaterial>>();
-
-        let ground_material = materials.add(StandardMaterial {
-            base_color_texture: Some(grass_texture),
-            perceptual_roughness: 0.9,
-            metallic: 0.0,
-            ..default()
-        });
+        let ground_material = materials.add(StandardMaterial::default());
 
         Self {
             ground_material,
             music,
-            env_map_specular,
-            env_map_diffuse,
+            env_map_specular: Handle::default(),
+            env_map_diffuse: Handle::default(),
         }
     }
 }

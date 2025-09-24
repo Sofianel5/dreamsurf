@@ -105,9 +105,13 @@ bevy_simple_text_input = "0.11.1"
 tokio = { version = "1", features = ["rt"] }
 futures-lite = "2.6"
 reqwest = "0.12.23"
+image = { version = "0.25.1", features = ["png"] }
 
 # Local crates
 generative = { path = "../../crates/generative" }
+
+# Git crates
+ktx2-rw = { git = "https://github.com/AllenDang/ktx2-rw" }
 
 [features]
 default = [

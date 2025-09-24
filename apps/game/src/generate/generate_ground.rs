@@ -9,6 +9,9 @@ use tokio::runtime::Builder;
 const GENERATED_TEXTURE_PATH: &str = "textures/generated/ground.png";
 
 pub fn generate_ground_texture(prompt: String) -> Result<String> {
+
+    let full_prompt = format!("a 3mx3m tilable, seamless ground texture for a world described as: {}", prompt);
+
     let runtime = Builder::new_current_thread()
         .enable_all()
         .build()
@@ -17,7 +20,7 @@ pub fn generate_ground_texture(prompt: String) -> Result<String> {
     runtime.block_on(async move {
         let generator = OpenAiImageGenerator::default();
         let request =
-            ImageGenerationRequest::new(prompt.clone()).with_output_format(ImageOutputFormat::Url);
+            ImageGenerationRequest::new(full_prompt.clone()).with_output_format(ImageOutputFormat::Url);
         let result = generator.generate_image(&request).await?;
 
         let image_url = result

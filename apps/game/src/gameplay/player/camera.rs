@@ -93,10 +93,25 @@ fn spawn_view_model(
     let player_transform = player_transform.get(trigger.target()).unwrap();
 
     // Get environment maps from either level type
-    let (env_map_diffuse, env_map_specular) = if let Some(level_assets) = level_assets {
+    let procedural_assets = procedural_level_assets.as_ref();
+    let level_assets = level_assets.as_ref();
+
+    let use_procedural = matches!(**current_screen, Screen::ProceduralGameplay)
+        && procedural_assets.map_or(false, |assets| {
+            assets.env_map_specular != Handle::default()
+                && assets.env_map_diffuse != Handle::default()
+        });
+
+    let (env_map_diffuse, env_map_specular) = if use_procedural {
+        let assets = procedural_assets.expect("procedural assets must exist in procedural gameplay");
+        (
+            assets.env_map_diffuse.clone(),
+            assets.env_map_specular.clone(),
+        )
+    } else if let Some(level_assets) = level_assets {
         (level_assets.env_map_diffuse.clone(), level_assets.env_map_specular.clone())
-    } else if let Some(procedural_assets) = procedural_level_assets {
-        (procedural_assets.env_map_diffuse.clone(), procedural_assets.env_map_specular.clone())
+    } else if let Some(assets) = procedural_assets {
+        (assets.env_map_diffuse.clone(), assets.env_map_specular.clone())
     } else {
         panic!("No level assets found!");
     };

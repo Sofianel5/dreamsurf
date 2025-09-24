@@ -30,10 +30,7 @@ fn listener(
     mut window: Single<&mut Window>,
 ) {
     for event in events.read() {
-        // Prepend the standard prompt text
-        let full_prompt = format!("a repeatable {} texture for the ground of a game", event.value);
-        info!("{:?} submitted: {}", event.entity, full_prompt);
-        prompt.0 = full_prompt;
+        prompt.0 = event.value.clone();
         next_screen.set(Screen::ProceduralLoading);
         window.cursor_options.grab_mode = CursorGrabMode::Locked;
     }
