@@ -1,6 +1,7 @@
-use std::{fs, path::Path};
+use std::{f32::consts::PI, fs, path::Path};
 
 use anyhow::{Context, Result};
+use bevy::math::Vec3;
 use generative::{
     ImageData, ImageGenerationRequest, ImageGenerator, ImageOutputFormat, OpenAiImageGenerator,
 };
@@ -16,25 +17,83 @@ fn convert_to_ktx2(bytes: &[u8]) -> Result<Ktx2Texture> {
     let image = image.to_rgba8();
     let (width, height) = image.dimensions();
 
-    let rgba = image.into_raw();
-
-    let mut texture = Ktx2Texture::create(width, height, 1, 1, 6, 1, VkFormat::R8G8B8A8Unorm)
+    // Assume the source is equirectangular (2:1). Use the vertical resolution for cubemap faces.
+    let face_size = height;
+    let mut texture = Ktx2Texture::create(face_size, face_size, 1, 1, 6, 1, VkFormat::R8G8B8A8Unorm)
         .context("failed to create Ktx2Texture")?;
 
+    let mut face_pixels = vec![0u8; (face_size * face_size * 4) as usize];
+
     for face in 0..6 {
+        fill_cubemap_face(&image, face, face_size, &mut face_pixels);
         texture
-            .set_image_data(0, 0, face, &rgba)
+            .set_image_data(0, 0, face, &face_pixels)
             .context("failed to set image data on Ktx2Texture")?;
     }
 
     tracing::debug!(
         faces = texture.faces(),
-        width = width,
-        height = height,
-        "Created KTX2 sky texture"
+        face_size,
+        width,
+        height,
+        "Created cubemap sky texture"
     );
 
     Ok(texture)
+}
+
+fn fill_cubemap_face(image: &image::RgbaImage, face: u32, size: u32, output: &mut [u8]) {
+    let width = image.width() as f32;
+    let height = image.height() as f32;
+
+    for y in 0..size {
+        for x in 0..size {
+            let idx = ((y * size + x) * 4) as usize;
+            let (dir_x, dir_y, dir_z) = cubemap_direction(face, x, y, size);
+            let color = sample_equirectangular(image, dir_x, dir_y, dir_z, width, height);
+            output[idx..idx + 4].copy_from_slice(&color);
+        }
+    }
+}
+
+fn cubemap_direction(face: u32, x: u32, y: u32, size: u32) -> (f32, f32, f32) {
+    let a = 2.0 * (x as f32 + 0.5) / size as f32 - 1.0;
+    let b = 2.0 * (y as f32 + 0.5) / size as f32 - 1.0;
+
+    // OpenGL-style face orientations
+    let dir = match face {
+        0 => Vec3::new(1.0, -b, -a),  // +X
+        1 => Vec3::new(-1.0, -b, a),  // -X
+        2 => Vec3::new(a, 1.0, b),    // +Y
+        3 => Vec3::new(a, -1.0, -b),  // -Y
+        4 => Vec3::new(a, -b, 1.0),   // +Z
+        5 => Vec3::new(-a, -b, -1.0), // -Z
+        _ => Vec3::new(0.0, 0.0, 0.0),
+    };
+
+    let dir = dir.normalize();
+    (dir.x, dir.y, dir.z)
+}
+
+fn sample_equirectangular(
+    image: &image::RgbaImage,
+    dir_x: f32,
+    dir_y: f32,
+    dir_z: f32,
+    width: f32,
+    height: f32,
+) -> [u8; 4] {
+    let u = 0.5 + dir_z.atan2(dir_x) / (2.0 * PI);
+    let v = 0.5 - dir_y.asin() / PI;
+
+    let u = u.rem_euclid(1.0);
+    let v = v.clamp(0.0, 1.0);
+
+    let x = (u * (width - 1.0)).round().clamp(0.0, width - 1.0) as u32;
+    let y = (v * (height - 1.0)).round().clamp(0.0, height - 1.0) as u32;
+
+    let pixel = image.get_pixel(x, y);
+    pixel.0
 }
 
 pub fn generate_sky_texture(prompt: String) -> Result<String> {
