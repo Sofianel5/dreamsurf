@@ -57,17 +57,18 @@ fn fill_cubemap_face(image: &image::RgbaImage, face: u32, size: u32, output: &mu
 }
 
 fn cubemap_direction(face: u32, x: u32, y: u32, size: u32) -> (f32, f32, f32) {
+    // Use centered pixel sampling to reduce edge artifacts
     let a = 2.0 * (x as f32 + 0.5) / size as f32 - 1.0;
     let b = 2.0 * (y as f32 + 0.5) / size as f32 - 1.0;
 
-    // OpenGL-style face orientations
+    // Corrected OpenGL-style face orientations for seamless cubemap
     let dir = match face {
-        0 => Vec3::new(1.0, -b, -a),  // +X
-        1 => Vec3::new(-1.0, -b, a),  // -X
-        2 => Vec3::new(a, 1.0, b),    // +Y
-        3 => Vec3::new(a, -1.0, -b),  // -Y
-        4 => Vec3::new(a, -b, 1.0),   // +Z
-        5 => Vec3::new(-a, -b, -1.0), // -Z
+        0 => Vec3::new(1.0, -b, -a),  // +X (right)
+        1 => Vec3::new(-1.0, -b, a),  // -X (left)
+        2 => Vec3::new(a, 1.0, b),    // +Y (top)
+        3 => Vec3::new(a, -1.0, -b),  // -Y (bottom)
+        4 => Vec3::new(a, -b, 1.0),   // +Z (front)
+        5 => Vec3::new(-a, -b, -1.0), // -Z (back)
         _ => Vec3::new(0.0, 0.0, 0.0),
     };
 
@@ -86,14 +87,49 @@ fn sample_equirectangular(
     let u = 0.5 + dir_z.atan2(dir_x) / (2.0 * PI);
     let v = 0.5 - dir_y.asin() / PI;
 
+    // Ensure proper wrapping for both coordinates to prevent seams
     let u = u.rem_euclid(1.0);
     let v = v.clamp(0.0, 1.0);
 
-    let x = (u * (width - 1.0)).round().clamp(0.0, width - 1.0) as u32;
-    let y = (v * (height - 1.0)).round().clamp(0.0, height - 1.0) as u32;
+    // Use bilinear sampling to reduce hard edges
+    sample_bilinear(image, u, v, width, height)
+}
 
-    let pixel = image.get_pixel(x, y);
-    pixel.0
+fn sample_bilinear(
+    image: &image::RgbaImage,
+    u: f32,
+    v: f32,
+    width: f32,
+    height: f32,
+) -> [u8; 4] {
+    // Convert to pixel space
+    let x = u * (width - 1.0);
+    let y = v * (height - 1.0);
+
+    // Get integer and fractional parts
+    let x0 = x.floor() as u32;
+    let y0 = y.floor() as u32;
+    let x1 = (x0 + 1).min((width - 1.0) as u32);
+    let y1 = (y0 + 1).min((height - 1.0) as u32);
+
+    let fx = x - x0 as f32;
+    let fy = y - y0 as f32;
+
+    // Sample four neighboring pixels
+    let p00 = image.get_pixel(x0, y0).0;
+    let p10 = image.get_pixel(x1, y0).0;
+    let p01 = image.get_pixel(x0, y1).0;
+    let p11 = image.get_pixel(x1, y1).0;
+
+    // Bilinear interpolation
+    let mut result = [0u8; 4];
+    for i in 0..4 {
+        let top = p00[i] as f32 * (1.0 - fx) + p10[i] as f32 * fx;
+        let bottom = p01[i] as f32 * (1.0 - fx) + p11[i] as f32 * fx;
+        result[i] = (top * (1.0 - fy) + bottom * fy).round().clamp(0.0, 255.0) as u8;
+    }
+
+    result
 }
 
 pub fn generate_sky_texture(prompt: String) -> Result<String> {

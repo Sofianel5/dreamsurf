@@ -1,6 +1,8 @@
 //! The screen state for procedural gameplay.
 
 use anyhow::Result as AnyhowResult;
+use avian_pickup::prop::PreferredPickupRotation;
+use avian3d::prelude::*;
 use bevy::{
     input::common_conditions::input_just_pressed,
     prelude::*,
@@ -18,6 +20,7 @@ use crate::{
     menus::Menu,
     screens::Screen,
     theme::{palette::SCREEN_BACKGROUND, widget},
+    third_party::avian3d::CollisionLayer,
 };
 
 pub(super) fn plugin(app: &mut App) {
@@ -210,10 +213,19 @@ fn spawn_generated_model(
 
     commands.spawn((
         Name::new(format!("Generated Prop {generation_folder}")),
-        SceneRoot(scene_handle),
+        SceneRoot(scene_handle.clone()),
         transform,
         GlobalTransform::default(),
+        // Add physics components to make the model collidable and pickupable
+        RigidBody::Dynamic, // Dynamic so it can be picked up and moved
+        // Use convex hull collision with proper layers for pickup interaction
+        ColliderConstructorHierarchy::new(ColliderConstructor::ConvexHullFromMesh)
+            .with_default_layers(CollisionLayers::new(CollisionLayer::Prop, LayerMask::ALL))
+            .with_default_density(500.0), // Reasonable weight for generated objects
+        // Enable pickup interaction
+        PreferredPickupRotation(Quat::IDENTITY), // Keep upright when picked up
         StateScoped(Screen::ProceduralGameplay),
+        GeneratedModel, // Mark as generated model
     ));
 
     info!(
@@ -333,3 +345,7 @@ struct ModelGenerationTask {
     prompt: String,
     task: Task<AnyhowResult<GeneratedModelPaths>>,
 }
+
+/// Marker component for generated models that need collision setup
+#[derive(Component)]
+struct GeneratedModel;
