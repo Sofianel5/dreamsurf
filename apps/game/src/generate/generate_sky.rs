@@ -12,15 +12,15 @@ use tokio::runtime::Builder;
 const GENERATED_TEXTURE_PATH: &str = "cubemaps/generated/sky.ktx2";
 
 fn convert_to_ktx2(bytes: &[u8]) -> Result<Ktx2Texture> {
-    let image =
-        load_from_memory(bytes).context("failed to decode image from downloaded bytes")?;
+    let image = load_from_memory(bytes).context("failed to decode image from downloaded bytes")?;
     let image = image.to_rgba8();
     let (width, height) = image.dimensions();
 
     // Assume the source is equirectangular (2:1). Use the vertical resolution for cubemap faces.
     let face_size = height;
-    let mut texture = Ktx2Texture::create(face_size, face_size, 1, 1, 6, 1, VkFormat::R8G8B8A8Unorm)
-        .context("failed to create Ktx2Texture")?;
+    let mut texture =
+        Ktx2Texture::create(face_size, face_size, 1, 1, 6, 1, VkFormat::R8G8B8A8Unorm)
+            .context("failed to create Ktx2Texture")?;
 
     let mut face_pixels = vec![0u8; (face_size * face_size * 4) as usize];
 

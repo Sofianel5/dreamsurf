@@ -19,7 +19,7 @@ mod third_party;
 mod ui_camera;
 
 use asset_processing::default_image_sampler_descriptor;
-use bevy::ecs::error::{error, GLOBAL_ERROR_HANDLER};
+use bevy::ecs::error::{GLOBAL_ERROR_HANDLER, error};
 use bevy::pbr::DefaultOpaqueRendererMethod;
 use bevy_landmass::LandmassSystemSet;
 use bevy_mod_skinned_aabb::SkinnedAabbPlugin;
@@ -66,7 +66,7 @@ fn main() -> AppExit {
             })
             .set(WindowPlugin {
                 primary_window: Window {
-                    title: "Foxtrot".to_string(),
+                    title: "DreamSurf".to_string(),
                     fit_canvas_to_parent: true,
                     ..default()
                 }

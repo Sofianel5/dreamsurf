@@ -106,6 +106,9 @@ tokio = { version = "1", features = ["rt"] }
 futures-lite = "2.6"
 reqwest = "0.12.23"
 image = { version = "0.25.1", features = ["png"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4"] }
 
 # Local crates
 generative = { path = "../../crates/generative" }

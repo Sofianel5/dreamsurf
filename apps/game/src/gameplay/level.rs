@@ -4,7 +4,7 @@ use crate::{
     asset_tracking::LoadResource, audio::MusicPool, gameplay::npc::NPC_RADIUS, screens::Screen,
 };
 use bevy::prelude::*;
-use bevy_landmass::{prelude::*};
+use bevy_landmass::prelude::*;
 use bevy_rerecast::prelude::*;
 use bevy_seedling::prelude::*;
 use bevy_seedling::sample::Sample;

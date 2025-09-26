@@ -10,7 +10,12 @@ pub(super) fn plugin(app: &mut App) {
     app.init_resource::<GenerationPrompt>()
         .add_systems(OnEnter(Menu::Generate), spawn_generate_menu)
         .add_plugins(TextInputPlugin)
-        .add_systems(Update, listener.after(TextInputSystem));
+        .add_systems(
+            Update,
+            listener
+                .after(TextInputSystem)
+                .run_if(in_state(Menu::Generate)),
+        );
 }
 
 fn spawn_generate_menu(mut commands: Commands) {

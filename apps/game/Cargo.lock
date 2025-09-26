@@ -3980,8 +3980,11 @@ dependencies = [
  "rand 0.8.5",
  "regex",
  "reqwest",
+ "serde",
+ "serde_json",
  "tokio",
  "tracing",
+ "uuid 1.18.1",
 ]
 
 [[package]]

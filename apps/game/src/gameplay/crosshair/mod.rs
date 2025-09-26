@@ -21,7 +21,10 @@ pub(super) fn plugin(app: &mut App) {
             .in_set(PostPhysicsAppSystems::ChangeUi),
     );
     app.add_systems(OnEnter(Screen::Gameplay), spawn_crosshair);
-    app.add_systems(OnEnter(Screen::ProceduralGameplay), spawn_procedural_crosshair);
+    app.add_systems(
+        OnEnter(Screen::ProceduralGameplay),
+        spawn_procedural_crosshair,
+    );
 
     app.add_plugins(assets::plugin);
 }

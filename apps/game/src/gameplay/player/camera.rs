@@ -30,9 +30,7 @@ use bevy_simple_subsecond_system::hot;
 
 use crate::{
     CameraOrder, PostPhysicsAppSystems, RenderLayer,
-    gameplay::{
-        animation::{AnimationPlayerAncestor, AnimationPlayerOf, AnimationPlayers},
-    },
+    gameplay::animation::{AnimationPlayerAncestor, AnimationPlayerOf, AnimationPlayers},
     screens::{Screen, loading::LoadingScreen},
     third_party::{avian3d::CollisionLayer, bevy_trenchbroom::LoadTrenchbroomModel as _},
 };
@@ -103,15 +101,22 @@ fn spawn_view_model(
         });
 
     let (env_map_diffuse, env_map_specular) = if use_procedural {
-        let assets = procedural_assets.expect("procedural assets must exist in procedural gameplay");
+        let assets =
+            procedural_assets.expect("procedural assets must exist in procedural gameplay");
         (
             assets.env_map_diffuse.clone(),
             assets.env_map_specular.clone(),
         )
     } else if let Some(level_assets) = level_assets {
-        (level_assets.env_map_diffuse.clone(), level_assets.env_map_specular.clone())
+        (
+            level_assets.env_map_diffuse.clone(),
+            level_assets.env_map_specular.clone(),
+        )
     } else if let Some(assets) = procedural_assets {
-        (assets.env_map_diffuse.clone(), assets.env_map_specular.clone())
+        (
+            assets.env_map_diffuse.clone(),
+            assets.env_map_specular.clone(),
+        )
     } else {
         panic!("No level assets found!");
     };

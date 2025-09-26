@@ -8,9 +8,9 @@ use bevy::{
 use futures_lite::future;
 
 use crate::{
-    gameplay::procedural_level::{spawn_procedural_level, ProceduralLevelAssets},
+    gameplay::procedural_level::{ProceduralLevelAssets, spawn_procedural_level},
     generate::{generate_ground::generate_ground_texture, generate_sky::generate_sky_texture},
-    menus::{generate::GenerationPrompt, Menu},
+    menus::{Menu, generate::GenerationPrompt},
     screens::Screen,
     theme::{palette::SCREEN_BACKGROUND, prelude::*},
 };
@@ -23,7 +23,10 @@ pub(super) fn plugin(app: &mut App) {
         )
         .add_systems(
             Update,
-            (monitor_generation_tasks, advance_to_procedural_gameplay_screen)
+            (
+                monitor_generation_tasks,
+                advance_to_procedural_gameplay_screen,
+            )
                 .run_if(in_state(Screen::ProceduralLoading)),
         )
         .add_systems(OnEnter(Screen::ProceduralGameplay), spawn_procedural_level)
@@ -93,10 +96,8 @@ fn monitor_generation_tasks(
                     });
 
                     procedural_assets.ground_material = material.clone();
-                    progress.ground = GenerationStatus::Succeeded(GeneratedGround {
-                        material,
-                        texture,
-                    });
+                    progress.ground =
+                        GenerationStatus::Succeeded(GeneratedGround { material, texture });
                 }
                 (GenerationKind::Sky, Ok(path)) => {
                     let texture: Handle<Image> = asset_server.load(path.clone());
@@ -135,10 +136,7 @@ fn advance_to_procedural_gameplay_screen(
             next_screen.set(Screen::Title);
             next_menu.set(Menu::Main);
         }
-        (
-            GenerationStatus::Succeeded(ground),
-            GenerationStatus::Succeeded(sky),
-        ) => {
+        (GenerationStatus::Succeeded(ground), GenerationStatus::Succeeded(sky)) => {
             if let Some(assets) = procedural_assets {
                 let states = [
                     asset_server.get_load_state(assets.music.id()),
