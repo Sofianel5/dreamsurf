@@ -38,7 +38,7 @@ fn spawn_procedural_loading_screen(mut commands: Commands) {
         widget::ui_root("Loading Screen"),
         BackgroundColor(SCREEN_BACKGROUND),
         StateScoped(Screen::ProceduralLoading),
-        children![widget::label("Generating Procedural World...")],
+        children![widget::label("Generating World...")],
     ));
 }
 

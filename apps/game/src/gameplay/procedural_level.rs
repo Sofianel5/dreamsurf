@@ -16,6 +16,9 @@ pub(super) fn plugin(app: &mut App) {
     app.register_type::<ProceduralLevel>();
 }
 
+pub(crate) const TERRAIN_SIZE: usize = 200;
+pub(crate) const TERRAIN_SCALE: f32 = 2.0;
+
 /// A system that spawns a procedural level.
 #[cfg_attr(feature = "hot_patch", hot)]
 pub(crate) fn spawn_procedural_level(
@@ -61,22 +64,17 @@ fn spawn_ground(
     meshes: &mut Assets<Mesh>,
 ) {
     // Generate hilly terrain using a heightfield collider
-    let terrain_size = 200;
-    let terrain_scale = 2.0;
+    let terrain_size = TERRAIN_SIZE;
+    let terrain_scale = TERRAIN_SCALE;
     let mut heights = vec![vec![0.0; terrain_size]; terrain_size];
 
     // Generate hills using simple noise-like patterns
     for x in 0..terrain_size {
         for z in 0..terrain_size {
-            let fx = x as f32 / terrain_size as f32;
-            let fz = z as f32 / terrain_size as f32;
+            let fx = x as f32 / (terrain_size - 1) as f32;
+            let fz = z as f32 / (terrain_size - 1) as f32;
 
-            // Combine multiple sine waves for rolling hills
-            let height = (fx * 8.0).sin() * (fz * 8.0).sin() * 3.0 +  // Main hills
-                (fx * 16.0).sin() * (fz * 16.0).sin() * 1.5 + // Smaller variations
-                (fx * 4.0).sin() * (fz * 4.0).sin() * 5.0; // Large rolling hills
-
-            heights[x][z] = height;
+            heights[x][z] = procedural_height_normalized(fx, fz);
         }
     }
 
@@ -175,12 +173,27 @@ fn create_terrain_mesh(heights: &Vec<Vec<f32>>, terrain_size: usize, terrain_sca
     mesh
 }
 
+fn procedural_height_normalized(fx: f32, fz: f32) -> f32 {
+    // Combine multiple sine waves for rolling hills
+    (fx * 8.0).sin() * (fz * 8.0).sin() * 3.0
+        + (fx * 16.0).sin() * (fz * 16.0).sin() * 1.5
+        + (fx * 4.0).sin() * (fz * 4.0).sin() * 5.0
+}
+
+pub(crate) fn sample_terrain_height(world_x: f32, world_z: f32) -> f32 {
+    let total_width = TERRAIN_SIZE as f32 * TERRAIN_SCALE;
+    let total_depth = total_width;
+    let fx = ((world_x + total_width / 2.0) / total_width).clamp(0.0, 1.0);
+    let fz = ((world_z + total_depth / 2.0) / total_depth).clamp(0.0, 1.0);
+    procedural_height_normalized(fx, fz)
+}
+
 #[cfg_attr(feature = "hot_patch", hot)]
 fn spawn_player(commands: &mut Commands) {
     // Calculate terrain height at spawn position
     let spawn_x = -30.0;
     let spawn_z = 0.0;
-    let terrain_height = get_terrain_height_at(spawn_x, spawn_z);
+    let terrain_height = sample_terrain_height(spawn_x, spawn_z);
 
     // Spawn player entity at a good spawn position
     commands.spawn((
@@ -190,23 +203,6 @@ fn spawn_player(commands: &mut Commands) {
         Visibility::default(),
         StateScoped(Screen::ProceduralGameplay),
     ));
-}
-
-// Helper function to calculate terrain height at a given position
-fn get_terrain_height_at(x: f32, z: f32) -> f32 {
-    let terrain_size = 200.0;
-    let terrain_scale = 2.0;
-
-    // Convert world coordinates to normalized coordinates
-    let fx = (x / (terrain_size * terrain_scale) + 0.5).clamp(0.0, 1.0);
-    let fz = (z / (terrain_size * terrain_scale) + 0.5).clamp(0.0, 1.0);
-
-    // Calculate height using the same formula as terrain generation
-    let height = (fx * 8.0).sin() * (fz * 8.0).sin() * 3.0 +  // Main hills
-        (fx * 16.0).sin() * (fz * 16.0).sin() * 1.5 + // Smaller variations
-        (fx * 4.0).sin() * (fz * 4.0).sin() * 5.0; // Large rolling hills
-
-    height
 }
 
 #[derive(Component, Debug, Reflect)]

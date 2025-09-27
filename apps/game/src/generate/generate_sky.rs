@@ -5,18 +5,41 @@ use bevy::math::Vec3;
 use generative::{
     ImageData, ImageGenerationRequest, ImageGenerator, ImageOutputFormat, OpenAiImageGenerator,
 };
-use image::load_from_memory;
+use image::{RgbaImage, imageops, load_from_memory};
 use ktx2_rw::{Ktx2Texture, VkFormat};
 use tokio::runtime::Builder;
 
 const GENERATED_TEXTURE_PATH: &str = "cubemaps/generated/sky.ktx2";
 
 fn convert_to_ktx2(bytes: &[u8]) -> Result<Ktx2Texture> {
-    let image = load_from_memory(bytes).context("failed to decode image from downloaded bytes")?;
-    let image = image.to_rgba8();
-    let (width, height) = image.dimensions();
+    let mut image = load_from_memory(bytes)
+        .context("failed to decode image from downloaded bytes")?
+        .to_rgba8();
 
-    // Assume the source is equirectangular (2:1). Use the vertical resolution for cubemap faces.
+    let width = image.width();
+    let original_height = image.height();
+    let target_height = (width / 2).max(1);
+
+    if original_height > target_height {
+        tracing::debug!(
+            width,
+            original_height,
+            target_height,
+            "cropping sky panorama to maintain 2:1 aspect"
+        );
+        let cropped = imageops::crop(&mut image, 0, 0, width, target_height).to_image();
+        image = cropped;
+    } else if original_height < target_height {
+        tracing::warn!(
+            width,
+            original_height,
+            target_height,
+            "sky panorama shorter than 2:1; conversion may stretch"
+        );
+    }
+
+    let width = image.width();
+    let height = image.height();
     let face_size = height;
     let mut texture =
         Ktx2Texture::create(face_size, face_size, 1, 1, 6, 1, VkFormat::R8G8B8A8Unorm)
@@ -42,7 +65,7 @@ fn convert_to_ktx2(bytes: &[u8]) -> Result<Ktx2Texture> {
     Ok(texture)
 }
 
-fn fill_cubemap_face(image: &image::RgbaImage, face: u32, size: u32, output: &mut [u8]) {
+fn fill_cubemap_face(image: &RgbaImage, face: u32, size: u32, output: &mut [u8]) {
     let width = image.width() as f32;
     let height = image.height() as f32;
 
@@ -77,7 +100,7 @@ fn cubemap_direction(face: u32, x: u32, y: u32, size: u32) -> (f32, f32, f32) {
 }
 
 fn sample_equirectangular(
-    image: &image::RgbaImage,
+    image: &RgbaImage,
     dir_x: f32,
     dir_y: f32,
     dir_z: f32,
@@ -133,7 +156,10 @@ fn sample_bilinear(
 }
 
 pub fn generate_sky_texture(prompt: String) -> Result<String> {
-    let full_prompt = format!("a sky texture for a world described as: {}", prompt);
+    let full_prompt = format!(
+        "a 360-degree seamless equirectangular sky panorama, 8k resolution, no seams skybox texture for a world described as: {}",
+        prompt
+    );
 
     let runtime = Builder::new_current_thread()
         .enable_all()
